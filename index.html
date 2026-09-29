@@ -1,1 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taj Darbar - Smart QR POS</title>
+    <!-- Firebase SDKs (Compat version for rapid static deployment) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+    <style>
+        :root { --primary: #D32F2F; --bg: #f8f9fa; --text: #333; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 0; color: var(--text); }
+        .header { background: var(--primary); color: white; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; }
+        .container { max-width: 800px; margin: 20px auto; padding: 0 15px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+        .card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; }
+        .card img { max-width: 100%; border-radius: 8px; height: 150px; object-fit: cover; }
+        .btn { background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; width: 100%; margin-top: 10px; font-weight: bold; }
+        .hidden { display: none; }
+        .login-bar { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+        input, select { width: 90%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; }
+    </style>
+</head>
+<body>
 
+<div class="header">Taj Darbar 🌴</div>
+
+<div class="container">
+    <!-- Role Switcher -->
+    <div class="login-bar" id="loginBar">
+        <input type="password" id="pinInput" placeholder="Enter PIN (Customer: leave blank)">
+        <button class="btn" style="width: auto;" onclick="login()">Login</button>
+    </div>
+
+    <!-- Customer View -->
+    <div id="customerView">
+        <h2 style="text-align: center;">Menu</h2>
+        <div class="grid" id="menuGrid"></div>
+        <button class="btn" style="margin-top: 20px;" onclick="submitOrder()">Submit Order (Table 1)</button>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="adminView" class="hidden">
+        <h2>Admin Dashboard</h2>
+        <div class="card" style="text-align: left;">
+            <h3>Add New Item / Upload Photo</h3>
+            <input type="text" id="itemName" placeholder="Item Name (e.g. Special Chicken Biryani)">
+            <input type="number" id="itemPrice" placeholder="Price (₹)">
+            <select id="itemCategory">
+                <option value="Mandi">Mandi</option>
+                <option value="Biryani">Biryani</option>
+                <option value="Starters">Starters</option>
+                <option value="Desserts">Desserts</option>
+            </select>
+            <input type="file" id="itemImage" accept="image/*">
+            <button class="btn" onclick="uploadAndAddItem()">Upload & Save to Menu</button>
+        </div>
+        <button class="btn" style="background: #333; margin-top: 20px;" onclick="initDefaultMenu()">Reset/Init Default Menu</button>
+    </div>
+
+    <!-- Kitchen KDS View -->
+    <div id="kitchenView" class="hidden">
+        <h2>Kitchen Display System (KDS)</h2>
+        <div id="kdsQueue"></div>
+    </div>
+</div>
+
+<script>
+    // 1. FIREBASE CONFIGURATION
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        databaseURL: "YOUR_DATABASE_URL",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const storage = firebase.storage();
+    const GOOGLE_SHEET_WEBHOOK = "YOUR_APPS_SCRIPT_WEB_APP_URL"; // Paste App Script URL here
+
+    let currentRole = 'customer';
+    let cart = [];
+
+    // 2. ROLE MANAGEMENT (Passwords)
+    function login() {
+        const pin = document.getElementById('pinInput').value;
+        document.getElementById('customerView').classList.add('hidden');
+        document.getElementById('adminView').classList.add('hidden');
+        document.getElementById('kitchenView').classList.add('hidden');
+
+        if (pin === 'admin999') {
+            currentRole = 'admin';
+            document.getElementById('adminView').classList.remove('hidden');
+        } else if (pin === 'kitchen999') {
+            currentRole = 'kitchen';
+            document.getElementById('kitchenView').classList.remove('hidden');
+            loadKDS();
+        } else if (pin === 'waiter999') {
+            currentRole = 'waiter';
+            // Route to waitstaff view (similar to KDS but for clearing tables)
+            alert("Logged in as Waiter. Ready to serve.");
+        } else {
+            currentRole = 'customer';
+            document.getElementById('customerView').classList.remove('hidden');
+            loadMenu();
+        }
+        document.getElementById('pinInput').value = '';
+    }
+
+    // 3. MENU RENDERING
+    function loadMenu() {
+        db.ref('menu').on('value', (snapshot) => {
+            const menuGrid = document.getElementById('menuGrid');
+            menuGrid.innerHTML = '';
+            snapshot.forEach((child) => {
+                const item = child.val();
+                const key = child.key;
+                menuGrid.innerHTML += `
+                    <div class="card">
+                        ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.name}">` : `<div style="height:150px; background:#eee; border-radius:8px;"></div>`}
+                        <h3 style="margin: 10px 0 5px;">${item.name}</h3>
+                        <p style="color: var(--primary); font-weight: bold; margin: 0;">₹${item.price}/-</p>
+                        <button class="btn" onclick="addToCart('${key}', '${item.name}', ${item.price})">Add to Order</button>
+                    </div>
+                `;
+            });
+        });
+    }
+
+    function addToCart(id, name, price) {
+        cart.push({id, name, price});
+        alert(`${name} added!`);
+    }
+
+    // 4. ORDER SUBMISSION & GOOGLE SHEETS SYNC
+    async function submitOrder() {
+        if(cart.length === 0) return alert("Cart is empty!");
+        const total = cart.reduce((sum, item) => sum + item.price, 0);
+        const orderId = 'ORD-' + Date.now();
+        const orderData = {
+            orderId: orderId,
+            table: "1",
+            items: cart.map(i => i.name).join(", "),
+            total: total,
+            status: "pending",
+            timestamp: Date.now()
+        };
+
+        // Save to Firebase
+        await db.ref('active_tables/' + orderId).set(orderData);
+        
+        // Save to Google Sheets automatically
+        fetch(GOOGLE_SHEET_WEBHOOK, {
+            method: 'POST',
+            body: JSON.stringify(orderData)
+        }).then(res => console.log("Saved to Sheets"));
+
+        cart = [];
+        alert("Order sent to Kitchen!");
+    }
+
+    // 5. ADMIN DIRECT PHOTO UPLOAD
+    async function uploadAndAddItem() {
+        const name = document.getElementById('itemName').value;
+        const price = document.getElementById('itemPrice').value;
+        const category = document.getElementById('itemCategory').value;
+        const file = document.getElementById('itemImage').files[0];
+
+        if (!name || !price) return alert("Name and price required");
+
+        let imageUrl = "";
+        if (file) {
+            const storageRef = storage.ref('menu_images/' + Date.now() + '_' + file.name);
+            const snapshot = await storageRef.put(file);
+            imageUrl = await snapshot.ref.getDownloadURL();
+        }
+
+        const newItemRef = db.ref('menu').push();
+        await newItemRef.set({ name, price: Number(price), category, imageUrl });
+        
+        alert("Item added successfully!");
+        document.getElementById('itemName').value = '';
+        document.getElementById('itemPrice').value = '';
+        document.getElementById('itemImage').value = '';
+    }
+
+    // 6. INITIALIZE DEFAULT TAJ DARBAR MENU
+    function initDefaultMenu() {
+        const defaultItems = {
+            "item1": { name: "BBQ FULL MANDI", price: 940, category: "Mandi" },
+            "item2": { name: "SUPREME OIL ROAST FULL MANDI", price: 900, category: "Mandi" },
+            "item3": { name: "FULL CHICKEN DUM BIRYANI", price: 290, category: "Biryani" },
+            "item4": { name: "FISH BIRYANI", price: 350, category: "Seafood" },
+            "item5": { name: "KUNAFA", price: 200, category: "Desserts" },
+            "item6": { name: "BADAM KHEER", price: 120, category: "Desserts" }
+        };
+        db.ref('menu').set(defaultItems);
+        alert("Default Taj Darbar Menu Loaded!");
+    }
+
+    // Initialize customer view by default
+    loadMenu();
+</script>
+</body>
+</html>
