@@ -1,209 +1,78 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Taj Darbar - Smart QR POS</title>
-    <!-- Firebase SDKs (Compat version for rapid static deployment) -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
-    <style>
-        :root { --primary: #D32F2F; --bg: #f8f9fa; --text: #333; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 0; color: var(--text); }
-        .header { background: var(--primary); color: white; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; }
-        .container { max-width: 800px; margin: 20px auto; padding: 0 15px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
-        .card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; }
-        .card img { max-width: 100%; border-radius: 8px; height: 150px; object-fit: cover; }
-        .btn { background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; width: 100%; margin-top: 10px; font-weight: bold; }
-        .hidden { display: none; }
-        .login-bar { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
-        input, select { width: 90%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; }
-    </style>
-</head>
-<body>
-
-<div class="header">Taj Darbar 🌴</div>
-
-<div class="container">
-    <!-- Role Switcher -->
-    <div class="login-bar" id="loginBar">
-        <input type="password" id="pinInput" placeholder="Enter PIN (Customer: leave blank)">
-        <button class="btn" style="width: auto;" onclick="login()">Login</button>
-    </div>
-
-    <!-- Customer View -->
-    <div id="customerView">
-        <h2 style="text-align: center;">Menu</h2>
-        <div class="grid" id="menuGrid"></div>
-        <button class="btn" style="margin-top: 20px;" onclick="submitOrder()">Submit Order (Table 1)</button>
-    </div>
-
-    <!-- Admin Dashboard -->
-    <div id="adminView" class="hidden">
-        <h2>Admin Dashboard</h2>
-        <div class="card" style="text-align: left;">
-            <h3>Add New Item / Upload Photo</h3>
-            <input type="text" id="itemName" placeholder="Item Name (e.g. Special Chicken Biryani)">
-            <input type="number" id="itemPrice" placeholder="Price (₹)">
-            <select id="itemCategory">
-                <option value="Mandi">Mandi</option>
-                <option value="Biryani">Biryani</option>
-                <option value="Starters">Starters</option>
-                <option value="Desserts">Desserts</option>
-            </select>
-            <input type="file" id="itemImage" accept="image/*">
-            <button class="btn" onclick="uploadAndAddItem()">Upload & Save to Menu</button>
-        </div>
-        <button class="btn" style="background: #333; margin-top: 20px;" onclick="initDefaultMenu()">Reset/Init Default Menu</button>
-    </div>
-
-    <!-- Kitchen KDS View -->
-    <div id="kitchenView" class="hidden">
-        <h2>Kitchen Display System (KDS)</h2>
-        <div id="kdsQueue"></div>
-    </div>
-</div>
-
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>Taj Darbar - Digital Menu</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<script>tailwind.config={theme:{extend:{colors:{primary:'#7a0f1c',gold:'#c9a24b',light:'#fbf6ea',dark:'#2b1a12'}}}}</script>
+<style>.hs::-webkit-scrollbar{display:none}#pb{display:none}@media print{body *{visibility:hidden}#pb,#pb *{visibility:visible}#pb{display:block;position:absolute;top:0;left:0}}</style></head>
+<body class="bg-light text-dark pb-40">
+<div id="login" class="fixed inset-0 z-50 bg-primary flex items-center justify-center p-5"><div class="bg-white rounded-3xl p-8 w-full max-w-sm text-center">
+<img src="images/tajdarbarface_.webp" class="rounded-2xl h-32 w-full object-cover mb-4"><h2 class="text-3xl font-black text-primary">Taj Darbar</h2>
+<p class="text-sm text-slate-500 my-3 font-semibold">Enter mobile number to open the menu</p>
+<input id="ph" type="tel" maxlength="10" placeholder="10-digit mobile" class="w-full text-center p-4 bg-light rounded-2xl font-black text-xl mb-4 outline-none" oninput="this.value=this.value.replace(/\D/g,'')">
+<button onclick="reg()" class="w-full bg-primary text-gold font-black py-4 rounded-2xl">PROCEED TO MENU</button></div></div>
+<header class="sticky top-0 z-30 bg-primary text-gold px-4 py-3 flex justify-between items-center shadow"><div><h1 class="text-2xl font-black leading-none">Taj Darbar</h1><span id="vip" class="hidden text-[10px] font-black bg-gold text-primary px-2 py-0.5 rounded-full">👑 VIP GUEST</span></div>
+<div class="bg-dark rounded-xl px-3 py-1.5 text-xs font-bold">TABLE <select id="tbl" class="bg-transparent font-black text-white outline-none"></select></div></header>
+<div id="chips" class="flex gap-2 overflow-x-auto hs px-4 py-3 sticky top-[60px] z-20 bg-light"></div>
+<div id="trk" class="hidden mx-4 my-3 bg-dark text-white p-5 rounded-3xl border-l-4 border-gold">
+<p class="text-xs text-gold font-black uppercase">Your running tab</p><p id="st" class="text-2xl font-black uppercase"></p>
+<div id="its" class="text-sm text-slate-300 my-3 max-h-40 overflow-y-auto"></div>
+<div class="flex justify-between items-center mb-3"><span class="text-slate-400 font-bold">Total</span><span id="tot" class="text-3xl font-black text-emerald-400"></span></div>
+<button onclick="printBill()" class="w-full mb-2 bg-slate-700 py-3 rounded-xl font-black text-sm">🖨️ Print Bill</button>
+<div id="pay" class="hidden grid grid-cols-3 gap-2"><button onclick="reqBill('UPI')" class="bg-blue-600 py-3 rounded-xl font-black text-sm">UPI</button><button onclick="reqBill('CASH')" class="bg-emerald-600 py-3 rounded-xl font-black text-sm">CASH</button><button onclick="reqBill('CARD')" class="bg-purple-600 py-3 rounded-xl font-black text-sm">CARD</button></div>
+<button id="rb" onclick="$('pay').classList.remove('hidden');this.classList.add('hidden')" class="w-full bg-gold text-primary py-3 rounded-xl font-black">Request Final Bill</button>
+<div id="upi" class="hidden text-center mt-3"><a id="upl" class="block bg-emerald-600 py-3 rounded-xl font-black text-sm">📱 Pay via GPay / PhonePe / Paytm</a></div>
+<div id="fb" class="hidden mt-4 pt-4 border-t border-slate-700 text-center"><p class="text-xs text-slate-400 font-bold uppercase mb-2">Rate your food</p>
+<div class="flex justify-center gap-6 text-4xl"><button onclick="fdb('Bad')">😞</button><button onclick="fdb('Good')">😋</button><button onclick="fdb('Excellent')">😍</button></div>
+<textarea id="fbt" rows="2" placeholder="Write a few lines (optional)" class="w-full mt-3 p-2 rounded-xl bg-slate-800 text-sm"></textarea></div></div>
+<div id="grid" class="px-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"><p class="col-span-full text-center p-10 font-bold text-slate-400">Loading menu...</p></div>
+<button onclick="$('sv').classList.toggle('hidden')" class="fixed bottom-28 right-4 z-40 bg-blue-600 text-white w-14 h-14 rounded-full text-2xl shadow-xl">🛎️</button>
+<div id="sv" class="hidden fixed bottom-44 right-4 z-40 bg-white rounded-2xl shadow-2xl p-3 w-52 space-y-2 text-sm font-bold">
+<button onclick="svc('Water Refill')" class="w-full bg-blue-50 p-2 rounded-lg">💧 Water</button><button onclick="svc('Clean Table')" class="w-full bg-emerald-50 p-2 rounded-lg">🧽 Clean Table</button><button onclick="svc('Cutlery Needed')" class="w-full bg-slate-100 p-2 rounded-lg">🍴 Cutlery</button><button onclick="svc('Call Waiter')" class="w-full bg-amber-50 p-2 rounded-lg">👤 Call Waiter</button></div>
+<div id="cart" class="hidden fixed bottom-3 left-3 right-3 md:left-auto md:w-96 bg-white rounded-3xl shadow-2xl p-4 z-40"><div id="cl" class="max-h-40 overflow-y-auto"></div>
+<input id="note" placeholder="Any special instructions?" class="w-full my-2 p-3 bg-light rounded-xl text-sm font-semibold outline-none">
+<button id="pb2" onclick="place()" class="w-full bg-primary text-gold py-4 rounded-xl font-black flex justify-between px-5"><span>Send to Kitchen</span><span id="ct"></span></button></div>
+<div id="pb"></div>
+<script src="firebase.js"></script>
 <script>
-    // 1. FIREBASE CONFIGURATION
-    const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT.firebaseapp.com",
-        databaseURL: "YOUR_DATABASE_URL",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT.appspot.com",
-        messagingSenderId: "YOUR_SENDER_ID",
-        appId: "YOUR_APP_ID"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const storage = firebase.storage();
-    const GOOGLE_SHEET_WEBHOOK = "YOUR_APPS_SCRIPT_WEB_APP_URL"; // Paste App Script URL here
-
-    let currentRole = 'customer';
-    let cart = [];
-
-    // 2. ROLE MANAGEMENT (Passwords)
-    function login() {
-        const pin = document.getElementById('pinInput').value;
-        document.getElementById('customerView').classList.add('hidden');
-        document.getElementById('adminView').classList.add('hidden');
-        document.getElementById('kitchenView').classList.add('hidden');
-
-        if (pin === 'admin999') {
-            currentRole = 'admin';
-            document.getElementById('adminView').classList.remove('hidden');
-        } else if (pin === 'kitchen999') {
-            currentRole = 'kitchen';
-            document.getElementById('kitchenView').classList.remove('hidden');
-            loadKDS();
-        } else if (pin === 'waiter999') {
-            currentRole = 'waiter';
-            // Route to waitstaff view (similar to KDS but for clearing tables)
-            alert("Logged in as Waiter. Ready to serve.");
-        } else {
-            currentRole = 'customer';
-            document.getElementById('customerView').classList.remove('hidden');
-            loadMenu();
-        }
-        document.getElementById('pinInput').value = '';
-    }
-
-    // 3. MENU RENDERING
-    function loadMenu() {
-        db.ref('menu').on('value', (snapshot) => {
-            const menuGrid = document.getElementById('menuGrid');
-            menuGrid.innerHTML = '';
-            snapshot.forEach((child) => {
-                const item = child.val();
-                const key = child.key;
-                menuGrid.innerHTML += `
-                    <div class="card">
-                        ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.name}">` : `<div style="height:150px; background:#eee; border-radius:8px;"></div>`}
-                        <h3 style="margin: 10px 0 5px;">${item.name}</h3>
-                        <p style="color: var(--primary); font-weight: bold; margin: 0;">₹${item.price}/-</p>
-                        <button class="btn" onclick="addToCart('${key}', '${item.name}', ${item.price})">Add to Order</button>
-                    </div>
-                `;
-            });
-        });
-    }
-
-    function addToCart(id, name, price) {
-        cart.push({id, name, price});
-        alert(`${name} added!`);
-    }
-
-    // 4. ORDER SUBMISSION & GOOGLE SHEETS SYNC
-    async function submitOrder() {
-        if(cart.length === 0) return alert("Cart is empty!");
-        const total = cart.reduce((sum, item) => sum + item.price, 0);
-        const orderId = 'ORD-' + Date.now();
-        const orderData = {
-            orderId: orderId,
-            table: "1",
-            items: cart.map(i => i.name).join(", "),
-            total: total,
-            status: "pending",
-            timestamp: Date.now()
-        };
-
-        // Save to Firebase
-        await db.ref('active_tables/' + orderId).set(orderData);
-        
-        // Save to Google Sheets automatically
-        fetch(GOOGLE_SHEET_WEBHOOK, {
-            method: 'POST',
-            body: JSON.stringify(orderData)
-        }).then(res => console.log("Saved to Sheets"));
-
-        cart = [];
-        alert("Order sent to Kitchen!");
-    }
-
-    // 5. ADMIN DIRECT PHOTO UPLOAD
-    async function uploadAndAddItem() {
-        const name = document.getElementById('itemName').value;
-        const price = document.getElementById('itemPrice').value;
-        const category = document.getElementById('itemCategory').value;
-        const file = document.getElementById('itemImage').files[0];
-
-        if (!name || !price) return alert("Name and price required");
-
-        let imageUrl = "";
-        if (file) {
-            const storageRef = storage.ref('menu_images/' + Date.now() + '_' + file.name);
-            const snapshot = await storageRef.put(file);
-            imageUrl = await snapshot.ref.getDownloadURL();
-        }
-
-        const newItemRef = db.ref('menu').push();
-        await newItemRef.set({ name, price: Number(price), category, imageUrl });
-        
-        alert("Item added successfully!");
-        document.getElementById('itemName').value = '';
-        document.getElementById('itemPrice').value = '';
-        document.getElementById('itemImage').value = '';
-    }
-
-    // 6. INITIALIZE DEFAULT TAJ DARBAR MENU
-    function initDefaultMenu() {
-        const defaultItems = {
-            "item1": { name: "BBQ FULL MANDI", price: 940, category: "Mandi" },
-            "item2": { name: "SUPREME OIL ROAST FULL MANDI", price: 900, category: "Mandi" },
-            "item3": { name: "FULL CHICKEN DUM BIRYANI", price: 290, category: "Biryani" },
-            "item4": { name: "FISH BIRYANI", price: 350, category: "Seafood" },
-            "item5": { name: "KUNAFA", price: 200, category: "Desserts" },
-            "item6": { name: "BADAM KHEER", price: 120, category: "Desserts" }
-        };
-        db.ref('menu').set(defaultItems);
-        alert("Default Taj Darbar Menu Loaded!");
-    }
-
-    // Initialize customer view by default
-    loadMenu();
-</script>
-</body>
-</html>
+const $=id=>document.getElementById(id);let menu={},cart={},cat="All",phone=localStorage.tdp||"",uid=null,cur=null,last=null;
+const tid=()=>"table_"+$("tbl").value;
+$("tbl").innerHTML=[...Array(20)].map((_,i)=>`<option>${i+1}</option>`).join("")+"<option>TA1</option><option>TA2</option><option>TA3</option>";
+const q=new URLSearchParams(location.search).get("table");if(q){$("tbl").value=q;$("tbl").disabled=true}
+$("tbl").onchange=track;
+function reg(){const p=$("ph").value;if(p.length!=10)return alert("Enter a valid 10-digit mobile number");phone=p;localStorage.tdp=p;go()}
+function go(){$("login").style.display="none";auth.signInAnonymously().then(c=>{uid=c.user.uid;
+ db.ref("customers/"+phone).transaction(v=>({visits:((v&&v.visits)||0)+(sessionStorage.v?0:1),last_visit:Date.now()}),(er,ok,s)=>{sessionStorage.v=1;const n=s&&s.val()&&s.val().visits;if(n>=3)$("vip").classList.remove("hidden")});
+ db.ref("menu").on("value",s=>{menu=s.val()||{};draw()});track();
+ try{speechSynthesis.speak(new SpeechSynthesisUtterance("Welcome to Taj Darbar"))}catch(x){}}).catch(x=>alert("Sign-in failed: "+x.message))}
+if(phone)go();
+function draw(){const cs=["All",...CATS.filter(c=>Object.values(menu).some(m=>m.category==c))];
+ $("chips").innerHTML=cs.map(c=>`<button onclick="cat='${c}';draw()" class="px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap ${c==cat?'bg-primary text-gold':'bg-white border'}">${c}</button>`).join("");
+ const items=Object.entries(menu).filter(([,m])=>m.name&&(cat=="All"||m.category==cat)).sort((a,b)=>(b[1].is_special?1:0)-(a[1].is_special?1:0));
+ $("grid").innerHTML=items.map(([id,m])=>{const s=m.stock_count||0,n=cart[id]?cart[id].qty:0;
+ return`<div class="bg-white rounded-2xl p-3 shadow relative overflow-hidden ${m.is_special?'ring-2 ring-gold':''}">${s<=0?'<div class="absolute inset-0 bg-white/80 z-10 flex items-center justify-center font-black">SOLD OUT</div>':''}${m.is_special?'<span class="absolute top-2 left-2 z-10 bg-gold text-primary text-[10px] font-black px-2 py-1 rounded">⭐ SPECIAL</span>':''}
+ <img src="${e(img(m))}" loading="lazy" onerror="this.src='images/tajdarbarface_.webp'" class="w-full h-28 object-cover rounded-xl mb-2 bg-black"><h3 class="font-black text-sm leading-tight">${e(m.name)}</h3>${s<=5&&s>0?`<span class="text-[10px] font-black text-red-600">🔥 ${s} left</span>`:''}
+ <p class="text-primary font-black text-lg">₹${m.base_price}</p>${n?`<div class="flex items-center justify-between bg-light rounded-lg p-1"><button class="w-8 h-8 bg-white rounded font-black" onclick="chg('${id}',-1)">-</button><b>${n}</b><button class="w-8 h-8 bg-primary text-white rounded font-black" onclick="chg('${id}',1)">+</button></div>`:`<button onclick="chg('${id}',1)" class="w-full bg-dark text-white text-xs font-black py-2 rounded-xl">+ ADD</button>`}</div>`}).join("")||"<p class='col-span-full text-center p-10 text-slate-400 font-bold'>Menu is empty. Ask staff.</p>";cartUI()}
+function chg(id,d){const m=menu[id];if(!m)return;const c=cart[id]||(cart[id]={itemId:id,name:m.name,price:+m.base_price,qty:0});
+ if(d>0&&c.qty>=(m.stock_count||0))return alert("Out of stock!");c.qty+=d;if(c.qty<=0)delete cart[id];draw()}
+function cartUI(){const a=Object.values(cart),t=a.reduce((s,i)=>s+i.price*i.qty,0);$("cart").classList.toggle("hidden",!a.length);$("ct").textContent="₹"+t;
+ $("cl").innerHTML=a.map(i=>`<div class="flex justify-between text-sm py-1 font-bold"><span>${e(i.name)} x${i.qty}</span><span>₹${i.price*i.qty}</span></div>`).join("")}
+function place(){const a=Object.values(cart);if(!a.length||!uid)return;$("pb2").disabled=true;const note=$("note").value.trim(),b=Date.now(),li={};
+ a.forEach((i,k)=>li[b+"_"+k]={itemId:i.itemId,name:i.name,price:i.price,qty:i.qty,addedAt:b,note:k==0&&note?note:null});
+ db.ref("active_tables/"+tid()).transaction(x=>{x=x||{};const l=Object.assign({},x.line_items||{},li);
+  return{uid:x.uid||uid,orderId:x.orderId||tid()+"_"+b,table:$("tbl").value,phone:x.phone||phone,line_items:l,items:Object.values(l).map(v=>v.qty+"x "+v.name+(v.note?" - Note: "+v.note:"")).join(" | "),total:Object.values(l).reduce((s,v)=>s+v.price*v.qty,0),status:"pending",timestamp:b,paymentMethod:x.paymentMethod||""}},
+ (er,ok)=>{$("pb2").disabled=false;if(er||!ok)return alert("Could not send order. This table may be in use by another guest.");
+  a.forEach(i=>db.ref("menu/"+i.itemId+"/stock_count").transaction(v=>Math.max(0,(v||0)-i.qty)));cart={};$("note").value="";draw()},false)}
+function track(){if(!uid||!phone)return;if(cur)cur.off();cur=db.ref("active_tables/"+tid());cur.on("value",s=>{const o=s.val();
+ if(!o||o.uid!==uid){$("trk").classList.add("hidden");if(last){alert("Thank you for dining at Taj Darbar! ❤️")}last=null;return}
+ last=o;$("trk").classList.remove("hidden");$("tot").textContent="₹"+o.total;$("its").innerHTML=(o.items||"").split(" | ").map(x=>"• "+e(x)).join("<br>");
+ const T={pending:"Order Sent!",cooking:"Cooking...",served:"Food Served! Enjoy",bill_requested:"Waiting for bill...",bill_ready:"Please pay your bill"};$("st").textContent=T[o.status]||o.status;
+ $("fb").classList.toggle("hidden",!["served","bill_requested","bill_ready"].includes(o.status));
+ $("rb").classList.toggle("hidden",o.status=="bill_requested"||o.status=="bill_ready");if(o.status!="served"&&o.status!="cooking"&&o.status!="pending")$("pay").classList.add("hidden");
+ $("upi").classList.toggle("hidden",!(o.status=="bill_ready"&&o.paymentMethod=="UPI"));
+ $("upl").href=`upi://pay?pa=${encodeURIComponent(UPI_ID)}&pn=${encodeURIComponent(BIZ)}&am=${o.total}&cu=INR&tn=${encodeURIComponent("Table "+o.table)}`},x=>console.error(x))}
+function reqBill(m){db.ref("active_tables/"+tid()).update({status:"bill_requested",paymentMethod:m}).catch(x=>alert("Failed: "+x.message))}
+function svc(t){db.ref("service_requests").push({table:$("tbl").value,phone,request_type:t,status:"pending",timestamp:Date.now()}).then(()=>{$("sv").classList.add("hidden");alert("Staff notified 🛎️")})}
+function fdb(r){if(!last)return;db.ref("feedback").push({table:last.table,phone,rating:r,note:$("fbt").value.trim(),timestamp:Date.now()});$("fb").innerHTML="<p class='text-emerald-400 font-black'>Feedback saved! ❤️</p>"}
+function printBill(){if(!last)return;$("pb").innerHTML=`<div style="font-family:monospace;width:300px"><h2 style="text-align:center">TAJ DARBAR</h2><p>Table ${e(last.table)} | ${e(last.phone)}</p><hr>${(last.items||"").split(" | ").map(e).join("<br>")}<hr><b>TOTAL: Rs. ${last.total}</b></div>`;window.print()}
+</script></body></html>
