@@ -21,7 +21,6 @@
     
     @keyframes floatUp { 0% { transform: translateY(20px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
     .fade-in-card { animation: floatUp 0.5s ease backwards; }
-    
     @keyframes slideUpBounce { 0% { transform: translateY(140%); opacity: 0; } 60% { transform: translateY(-10px); opacity: 1; } 100% { transform: translateY(0); opacity: 1; } }
     .cart-pop-in { animation: slideUpBounce .6s cubic-bezier(.34,1.56,.64,1) both; }
     
@@ -37,11 +36,15 @@
 
     #printBillArea { display: none; }
     @media print { body * { visibility: hidden; } #printBillArea, #printBillArea * { visibility: visible; } #printBillArea { display: block !important; position: absolute; top: 0; left: 0; width: 100%; padding: 20px; background: #fff; color: #000; } }
+
+    /* Custom Progress Bar */
+    .progress-step { transition: all 0.5s ease; }
+    .progress-active { background-color: #fbbf24; transform: scale(1.2); box-shadow: 0 0 10px rgba(251,191,36,0.5); }
+    .progress-line { transition: width 0.5s ease; }
   </style>
 </head>
 <body class="bg-light text-slate-800 font-sans antialiased pb-36 overflow-hidden">
 
-  <!-- Connection Monitor -->
   <div id="connectionBanner" class="hidden fixed top-0 left-0 right-0 z-[130] bg-red-600 text-white text-center text-xs font-black py-2 shadow-md transition-transform duration-300 transform -translate-y-full">
     ⚠ Connection lost — reconnecting...
   </div>
@@ -68,7 +71,6 @@
     <div class="flex flex-col">
       <h1 class="text-2xl font-black text-royal leading-none tracking-tight">Taj <span class="text-primary">Darbar</span></h1>
       <p id="vipBadge" class="hidden text-[10px] font-black bg-gradient-to-r from-gold to-amber-500 text-white px-2 py-0.5 rounded-full mt-1 inline-block uppercase tracking-widest shadow-sm w-max">👑 VIP Guest</p>
-      <p id="loyaltyTeaser" class="hidden text-[10px] font-bold text-slate-500 mt-1"></p>
     </div>
     <div class="bg-royal text-white px-4 py-2 rounded-xl flex items-center gap-2 shadow-md">
       <span class="text-[10px] font-black text-amber-400 tracking-widest">TABLE</span>
@@ -103,6 +105,17 @@
   <!-- Live Tracker -->
   <div id="activeTracker" class="hidden mx-5 mt-4 bg-royal text-white p-6 rounded-[2rem] shadow-2xl border-l-4 border-amber-400 relative overflow-hidden">
     <div class="absolute -right-16 -top-16 w-40 h-40 bg-primary/20 rounded-full blur-3xl pointer-events-none"></div>
+    
+    <!-- Dynamic Progress Bar -->
+    <div class="flex items-center justify-between mb-4 relative">
+      <div class="absolute top-1/2 left-0 w-full h-1 bg-slate-700 -translate-y-1/2 z-0 rounded-full"></div>
+      <div id="progressLine" class="absolute top-1/2 left-0 h-1 bg-amber-400 -translate-y-1/2 z-0 rounded-full progress-line" style="width: 0%;"></div>
+      <div id="step1" class="w-4 h-4 rounded-full bg-slate-600 z-10 progress-step"></div>
+      <div id="step2" class="w-4 h-4 rounded-full bg-slate-600 z-10 progress-step"></div>
+      <div id="step3" class="w-4 h-4 rounded-full bg-slate-600 z-10 progress-step"></div>
+      <div id="step4" class="w-4 h-4 rounded-full bg-slate-600 z-10 progress-step"></div>
+    </div>
+
     <h3 class="text-xs text-amber-400 font-black uppercase tracking-widest mb-1">Your Royal Tab</h3>
     <p id="orderStatusText" class="text-3xl font-black text-white uppercase tracking-tight">Active Session</p>
     
@@ -129,9 +142,24 @@
       <button onclick="showPaymentOptions()" id="reqBillBtn" class="w-full bg-gradient-to-r from-primary to-amber-500 text-white py-4 rounded-xl font-black text-base active:scale-95 transition-transform shadow-lg">Request Final Bill</button>
     </div>
 
-    <!-- Feedback Section -->
+    <!-- Live UPI Section & Feedback -->
     <div id="feedbackSection" class="hidden mt-6 pt-6 border-t border-slate-700/50 text-center relative z-10">
-      <div id="feedbackBox" class="mb-5 pb-5 border-b border-slate-700/50">
+      
+      <div id="upiArea" class="hidden mb-6 pb-6 border-b border-slate-700/50">
+        <p class="text-amber-400 font-black mb-1 text-sm uppercase tracking-widest">Scan to Pay</p>
+        <p class="text-slate-400 font-semibold text-xs mb-4">Paytm / PhonePe / GPay</p>
+        <div class="bg-white p-4 rounded-2xl inline-block shadow-[0_0_20px_rgba(251,191,36,0.3)] mb-4 border-4 border-amber-400">
+          <!-- Live QR Code Generation -->
+          <img id="upiQRCode" src="" alt="UPI QR Code" class="w-48 h-48 object-contain">
+        </div>
+        <p class="text-lg font-black text-white mb-4">Amount: <span id="upiAmountDisplay" class="text-emerald-400"></span></p>
+        <!-- Deep Link Intent -->
+        <a id="gpayDirectLink" href="#" class="block w-full bg-blue-600 hover:bg-blue-500 active:scale-95 text-white py-4 rounded-xl font-black text-sm transition-transform shadow-lg flex items-center justify-center gap-2">
+          📱 Pay Directly via App
+        </a>
+      </div>
+
+      <div id="feedbackBox">
         <p class="text-xs font-black uppercase tracking-widest text-amber-400 mb-5">Rate your royal experience</p>
         <div class="flex justify-center gap-8 text-5xl mb-6">
           <button onclick="sendFeedback('Bad')" class="hover:scale-110 active:scale-90 transition-transform filter drop-shadow-md">😞</button>
@@ -140,16 +168,6 @@
         </div>
         <textarea id="feedbackText" rows="2" placeholder="Tell us what you loved (optional)" class="w-full mb-4 p-4 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white placeholder-slate-500 outline-none focus:border-amber-500 resize-none"></textarea>
         <button onclick="sendWrittenFeedback()" class="w-full bg-amber-500/20 hover:bg-amber-500 text-amber-400 hover:text-royal text-sm font-black py-3 rounded-xl active:scale-95 transition-all mb-4 border border-amber-500/30">Send Feedback</button>
-        <a href="https://www.google.com/search?q=Taj+Darbar+Restaurant+Khammam#lrd=0x0:0x0,3," target="_blank" class="block w-full bg-white text-royal font-black py-3.5 rounded-xl transition-transform active:scale-95 shadow-md flex justify-center items-center gap-2">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" class="w-5 h-5"> Rate us on Google
-        </a>
-      </div>
-      <div id="upiArea" class="hidden">
-        <p class="text-amber-400 font-black mb-4 text-xs uppercase tracking-widest">Scan to Pay via UPI</p>
-        <div class="bg-white p-4 rounded-2xl inline-block shadow-lg mb-4">
-          <img id="upiQRCode" src="upi-qr-img.jpeg" onerror="this.style.display='none'" class="w-40 h-40 object-contain">
-        </div>
-        <a id="gpayDirectLink" href="#" class="block w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white py-4 rounded-xl font-black text-sm transition-transform shadow-lg">📱 Pay Directly via App</a>
       </div>
     </div>
   </div>
@@ -171,7 +189,6 @@
         <h3 class="text-2xl font-black text-royal tracking-tight">🛎️ At your service</h3>
         <button onclick="closeServiceModal()" class="w-8 h-8 bg-slate-100 rounded-full text-slate-500 hover:text-royal font-black flex items-center justify-center transition-colors">&times;</button>
       </div>
-      <p class="text-sm text-slate-500 mb-6 font-semibold">How can we assist Table <span id="serviceTableDisplay" class="text-primary font-black text-base"></span>?</p>
       <div class="grid grid-cols-2 gap-3 mb-5">
         <button onclick="submitServiceRequest('Water Refill')" class="bg-blue-50 text-blue-600 border border-blue-100 py-4 rounded-2xl font-bold active:scale-95 transition-transform flex flex-col items-center gap-1 shadow-sm"><span class="text-2xl">💧</span> <span class="text-xs uppercase tracking-wider">Water</span></button>
         <button onclick="submitServiceRequest('Clean Table')" class="bg-emerald-50 text-emerald-600 border border-emerald-100 py-4 rounded-2xl font-bold active:scale-95 transition-transform flex flex-col items-center gap-1 shadow-sm"><span class="text-2xl">🧽</span> <span class="text-xs uppercase tracking-wider">Clean</span></button>
@@ -192,12 +209,12 @@
       <p class="text-xs text-slate-500 font-semibold mb-6">Want something not on the menu? Tell the kitchen.</p>
       
       <div class="space-y-4 mb-6">
-        <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Dish Name</label><input type="text" id="custDishName" class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-primary focus:bg-white transition-colors"></div>
+        <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Dish Name</label><input type="text" id="custDishName" class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-primary"></div>
         <div class="grid grid-cols-2 gap-4">
-          <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Price (₹)</label><input type="number" id="custDishPrice" class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-primary focus:bg-white transition-colors"></div>
-          <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Quantity</label><input type="number" id="custDishQty" value="1" min="1" class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-primary focus:bg-white transition-colors"></div>
+          <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Price (₹)</label><input type="number" id="custDishPrice" class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-primary"></div>
+          <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Quantity</label><input type="number" id="custDishQty" value="1" min="1" class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-primary"></div>
         </div>
-        <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Image URL (Optional)</label><input type="text" id="custDishImg" placeholder="Paste link to picture" class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-primary focus:bg-white transition-colors"></div>
+        <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Image URL (Optional)</label><input type="text" id="custDishImg" placeholder="Paste link to picture" class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-primary"></div>
       </div>
       <button onclick="addCustomDish()" class="w-full bg-royal text-white font-black py-4 rounded-xl active:scale-95 transition-transform shadow-lg">ADD TO CART</button>
     </div>
@@ -208,19 +225,15 @@
     <div class="flex items-center justify-between cursor-pointer select-none" onclick="toggleCart()">
       <div class="flex items-center gap-4">
         <div class="w-12 h-12 bg-gradient-to-br from-amber-100 to-amber-200 rounded-full flex items-center justify-center text-primary font-black relative shadow-inner">
-          🛒
-          <span id="cartBadgeCount" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold border-2 border-white shadow-sm">0</span>
+          🛒<span id="cartBadgeCount" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold border-2 border-white shadow-sm">0</span>
         </div>
-        <div>
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Your Cart</p>
-          <p id="cartTotal" class="text-2xl font-black text-royal leading-none tracking-tight">₹0</p>
-        </div>
+        <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Your Cart</p><p id="cartTotal" class="text-2xl font-black text-royal leading-none tracking-tight">₹0</p></div>
       </div>
       <div id="cartToggleIcon" class="w-8 h-8 flex items-center justify-center bg-slate-50 text-slate-500 rounded-full font-black text-sm transition-transform duration-300">▼</div>
     </div>
     <div id="cartExpandedContent" class="overflow-hidden transition-all duration-300" style="max-height: 500px; opacity: 1; margin-top: 1.25rem;">
       <div id="cartListUI" class="mb-4 max-h-56 overflow-y-auto pr-2 divide-y divide-slate-50"></div>
-      <input type="text" id="orderNotes" placeholder="Special cooking instructions?" class="w-full mb-4 px-4 py-3.5 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-sm outline-none focus:border-primary transition-colors">
+      <input type="text" id="orderNotes" placeholder="Special cooking instructions?" class="w-full mb-4 px-4 py-3.5 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-sm outline-none focus:border-primary">
       <button onclick="placeOrder()" id="placeOrderBtn" class="w-full bg-gradient-to-r from-primary to-amber-500 text-white py-4 rounded-xl font-black shadow-lg active:scale-95 transition-transform tracking-wide text-base">SEND TO KITCHEN</button>
     </div>
   </div>
@@ -242,75 +255,10 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const UPI_ID = "yourupi@okbank";
+    // --- CRITICAL VARS ---
+    const UPI_ID = "paytm.s2fr1gu@pyt"; // User specific UPI
     const UPI_PAYEE_NAME = "Taj Darbar";
     const RESTAURANT_HELP_PHONE = "91XXXXXXXXXX"; 
-
-    // --- FULL TAJ DARBAR MENU SEED ---
-    const CHICKEN_IMG = 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=500&q=80';
-    const MUTTON_IMG   = 'https://images.unsplash.com/photo-1633383718081-22ac93e3db65?w=500&q=80';
-    const VEG_IMG      = 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=500&q=80';
-    const CURRY_IMG    = 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=500&q=80';
-    const GENERIC_IMG  = 'https://images.unsplash.com/photo-1544025162-8111142154ea?w=500&q=80';
-
-    const defaultMenuData = {
-      item_bbq_chicken_mandi:            { name:"BBQ Chicken Mandi", category:"Chicken Mandi", base_label:"Half", base_price:520, portions:{"Full":940}, stock_count:50, initial_stock:50, image_url:CHICKEN_IMG },
-      item_bbq_chicken_mandi_special:    { name:"Special BBQ Chicken Mandi", category:"Chicken Mandi", is_special:true, base_label:"Half", base_price:550, portions:{"Full":1050}, stock_count:50, initial_stock:50, image_url:CHICKEN_IMG },
-      item_3pc_bbq_mandi:                { name:"3 Pc BBQ Half Mandi", category:"Chicken Mandi", base_price:790, stock_count:50, initial_stock:50, image_url:CHICKEN_IMG },
-      item_3pc_bbq_mandi_special:        { name:"Special 3 Pc BBQ Half Mandi", category:"Chicken Mandi", is_special:true, base_price:850, stock_count:50, initial_stock:50, image_url:CHICKEN_IMG },
-      item_supreme_oil_roast_mandi:      { name:"Supreme Oil Roast Mandi", category:"Chicken Mandi", base_label:"Half", base_price:500, portions:{"Full":900}, stock_count:50, initial_stock:50, image_url:CHICKEN_IMG },
-      item_supreme_garlic_mandi:         { name:"Supreme Garlic Mandi", category:"Chicken Mandi", base_label:"Half", base_price:520, portions:{"Full":920}, stock_count:50, initial_stock:50, image_url:CHICKEN_IMG },
-      item_lolipop_oil_roast_mandi:      { name:"Lolipop Oil Roast Mandi", category:"Chicken Mandi", base_label:"Half", base_price:460, portions:{"Full":840}, stock_count:50, initial_stock:50, image_url:CHICKEN_IMG },
-      item_butter_garlic_lolipop_mandi:  { name:"Butter Garlic Lolipop Mandi", category:"Chicken Mandi", base_label:"Half", base_price:480, portions:{"Full":880}, stock_count:50, initial_stock:50, image_url:CHICKEN_IMG },
-      item_crispy_chicken_mandi:         { name:"Crispy Chicken Mandi", category:"Chicken Mandi", base_label:"Half", base_price:500, portions:{"Full":950}, stock_count:50, initial_stock:50, image_url:CHICKEN_IMG },
-      item_tangidi_mandi:                { name:"Tangidi Mandi", category:"Chicken Mandi", base_label:"Half", base_price:440, portions:{"Full":800}, stock_count:50, initial_stock:50, image_url:CHICKEN_IMG },
-      item_mini_mandi_chicken:           { name:"Mini Mandi Chicken", category:"Chicken Mandi", base_price:300, stock_count:50, initial_stock:50, image_url:CHICKEN_IMG },
-      
-      item_boiled_mutton_mandi:          { name:"Boiled Mutton Mandi", category:"Mutton Mandi", base_label:"Half", base_price:600, portions:{"Full":1100}, stock_count:50, initial_stock:50, image_url:MUTTON_IMG },
-      item_special_mutton_mandi:         { name:"Special Mutton Mandi", category:"Mutton Mandi", is_special:true, base_label:"Half", base_price:650, portions:{"Full":1200}, stock_count:50, initial_stock:50, image_url:MUTTON_IMG },
-      item_ghee_roast_mutton_mandi:      { name:"Ghee Roast Fry Mutton Mandi", category:"Mutton Mandi", base_label:"Half", base_price:680, portions:{"Full":1220}, stock_count:50, initial_stock:50, image_url:MUTTON_IMG },
-      item_nawabi_mutton_mandi:          { name:"Nawabi Mutton Mandi", category:"Mutton Mandi", base_label:"Half", base_price:680, portions:{"Full":1300}, stock_count:50, initial_stock:50, image_url:MUTTON_IMG },
-
-      item_fish_mandi:                   { name:"Fish Mandi", category:"Seafood Mandi", base_label:"Half", base_price:480, portions:{"Full":900}, stock_count:50, initial_stock:50, image_url:GENERIC_IMG },
-      item_broasted_fish_mandi:          { name:"Broasted Fish Mandi", category:"Seafood Mandi", base_label:"Half", base_price:520, portions:{"Full":950}, stock_count:50, initial_stock:50, image_url:GENERIC_IMG },
-      item_prawns_mandi:                 { name:"Prawns Mandi", category:"Seafood Mandi", base_label:"Half", base_price:480, portions:{"Full":840}, stock_count:50, initial_stock:50, image_url:GENERIC_IMG },
-      item_mixed_mandi:                  { name:"Mixed Mandi", category:"Mixed Mandi", base_label:"Half", base_price:650, portions:{"Full":1350}, stock_count:50, initial_stock:50, image_url:GENERIC_IMG },
-
-      item_chilli_paneer_mandi:          { name:"Chilli Paneer Half Mandi", category:"Veg Mandi", base_price:440, stock_count:50, initial_stock:50, image_url:VEG_IMG },
-      item_paneer_65_mandi:              { name:"Paneer 65 Half Mandi", category:"Veg Mandi", base_price:440, stock_count:50, initial_stock:50, image_url:VEG_IMG },
-
-      item_single_chicken_biryani:       { name:"Single Chicken Dum Biryani", category:"Chicken Biryani", base_price:160, stock_count:50, initial_stock:50, image_url:CHICKEN_IMG },
-      item_full_chicken_biryani:         { name:"Full Chicken Dum Biryani", category:"Chicken Biryani", base_price:290, stock_count:50, initial_stock:50, image_url:CHICKEN_IMG },
-      item_chicken_family_pack:          { name:"Chicken Family Pack", category:"Chicken Biryani", base_price:750, stock_count:50, initial_stock:50, image_url:CHICKEN_IMG },
-      item_chicken_jumbo_pack:           { name:"Chicken Jumbo Pack", category:"Chicken Biryani", base_price:1150, stock_count:50, initial_stock:50, image_url:CHICKEN_IMG },
-      
-      item_single_mutton_biryani:        { name:"Single Mutton Dum Biryani", category:"Mutton Biryani", base_price:250, stock_count:50, initial_stock:50, image_url:MUTTON_IMG },
-      item_full_mutton_biryani:          { name:"Full Mutton Dum Biryani", category:"Mutton Biryani", base_price:460, stock_count:50, initial_stock:50, image_url:MUTTON_IMG },
-
-      item_veg_biryani:                  { name:"Veg Biryani", category:"Veg Biryani", base_price:250, stock_count:50, initial_stock:50, image_url:VEG_IMG },
-
-      item_chicken_65:                   { name:"Chicken 65", category:"Chicken Starters", base_price:350, stock_count:50, initial_stock:50, image_url:CHICKEN_IMG },
-      item_pepper_chicken:               { name:"Pepper Chicken", category:"Chicken Starters", base_price:350, stock_count:50, initial_stock:50, image_url:CHICKEN_IMG },
-      item_chicken_majestic:             { name:"Chicken Majestic", category:"Chicken Starters", base_price:350, stock_count:50, initial_stock:50, image_url:CHICKEN_IMG },
-      item_lolipop_starter:              { name:"Lolipop", category:"Chicken Starters", base_price:320, stock_count:50, initial_stock:50, image_url:CHICKEN_IMG },
-
-      item_butter_naan:                  { name:"Butter Naan", category:"Breads", base_price:40, stock_count:50, initial_stock:50, image_url:GENERIC_IMG },
-      item_rumali_roti:                  { name:"Rumali Roti", category:"Breads", base_price:40, stock_count:50, initial_stock:50, image_url:GENERIC_IMG },
-      item_masala_kulcha:                { name:"Masala Kulcha", category:"Breads", base_price:50, stock_count:50, initial_stock:50, image_url:GENERIC_IMG },
-
-      item_paneer_butter_masala:         { name:"Paneer Butter Masala", category:"Curries", base_price:350, stock_count:50, initial_stock:50, image_url:CURRY_IMG },
-      item_butter_chicken:               { name:"Butter Chicken", category:"Curries", base_price:370, stock_count:50, initial_stock:50, image_url:CURRY_IMG },
-
-      item_kunafa:                       { name:"Kunafa", category:"Desserts", base_price:200, stock_count:50, initial_stock:50, image_url:GENERIC_IMG },
-      item_kaddu_ki_kheer:               { name:"Kaddu ki Kheer", category:"Desserts", base_price:120, stock_count:50, initial_stock:50, image_url:GENERIC_IMG }
-    };
-
-    // Auto-seed if database is empty
-    db.ref('menu').once('value').then(snap => {
-      if (!snap.val() || Object.keys(snap.val()).length === 0) {
-        db.ref('menu').set(defaultMenuData);
-      }
-    });
 
     db.ref('.info/connected').on('value', snap => {
       const banner = document.getElementById('connectionBanner');
@@ -318,7 +266,7 @@
       else { banner.classList.replace('translate-y-0','-translate-y-full'); setTimeout(()=>banner.classList.add('hidden'), 300); }
     });
 
-    // --- SFX ---
+    // --- SFX & Haptics ---
     let audioCtx = null;
     function getCtx(){ try{ if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); return audioCtx; }catch(e){ return null; } }
     function playTone(f,d,t,v,del){ const ctx=getCtx(); if(!ctx)return; try{ const osc=ctx.createOscillator(),g=ctx.createGain(); osc.type=t||'sine'; osc.frequency.value=f; const s=ctx.currentTime+(del||0); g.gain.setValueAtTime(v||0.15,s); g.gain.exponentialRampToValueAtTime(0.0001,s+(d||0.15)); osc.connect(g); g.connect(ctx.destination); osc.start(s); osc.stop(s+(d||0.15)+0.02); }catch(e){} }
@@ -329,6 +277,10 @@
     function playNotify(){ playTone(440,.12,'sine',.13,0); playTone(554.37,.16,'sine',.12,.08); }
     function playError(){ playTone(220,.25,'sawtooth',.14,0); }
     function vibrate(p){ try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){} }
+
+    function speakText(text) {
+      try { if ('speechSynthesis' in window) { const msg = new SpeechSynthesisUtterance(text); msg.rate = 1; window.speechSynthesis.speak(msg); } } catch(e){}
+    }
 
     // --- UTILS ---
     function showFunToast(text){
@@ -370,18 +322,9 @@
       if(d.length!==10){ playError(); return alert("Enter valid 10-digit number."); }
       customerPhone = d; localStorage.setItem('td_cust_phone', d);
       playChime(); vibrate(20);
-      db.ref('customers/'+d).once('value', snap => {
-        let v = (snap.val() && typeof snap.val().visits === 'number') ? snap.val().visits+1 : 1;
-        db.ref('customers/'+d).set({ visits: v, last_visit: Date.now() });
-        if(v>=3) document.getElementById('vipBadge').classList.remove('hidden');
-      });
       document.getElementById('loginModal').style.display='none'; document.body.classList.remove('overflow-hidden');
       showFunToast("Welcome to Taj Darbar! 👑"); listenToRunningTab(); updateTableOccupancyPill();
     };
-
-    if(customerPhone) {
-      db.ref('customers/'+customerPhone).once('value', snap => { if(snap.val() && snap.val().visits>=3) document.getElementById('vipBadge').classList.remove('hidden'); });
-    }
 
     window.filterMenu = function(cat) {
       currentFilter = cat; playClick();
@@ -417,7 +360,7 @@
           <div class="food-card fade-in-card bg-card rounded-[1.5rem] p-4 flex flex-col relative overflow-hidden">
             ${sBadge} ${vBadge}
             <div class="w-full h-32 rounded-xl bg-slate-100 overflow-hidden mb-3 shadow-inner">
-              <img src="${i.image_url||GENERIC_IMG}" class="w-full h-full object-cover">
+              <img src="${i.image_url||'https://images.unsplash.com/photo-1544025162-8111142154ea?w=200&q=80'}" class="w-full h-full object-cover">
             </div>
             <div class="flex flex-col flex-1">
               <h3 class="font-black text-royal leading-tight text-sm">${i.name}</h3>
@@ -429,8 +372,10 @@
     }
 
     window.addCustomDish = function() {
-      const n=document.getElementById('custDishName').value.trim(), p=parseFloat(document.getElementById('custDishPrice').value), q=parseInt(document.getElementById('custDishQty').value)||1, img=document.getElementById('custDishImg').value.trim();
+      const n=document.getElementById('custDishName').value.trim(), p=parseFloat(document.getElementById('custDishPrice').value), q=parseInt(document.getElementById('custDishQty').value)||1;
+      let img=document.getElementById('custDishImg').value.trim();
       if(!n){ playError(); return alert("Name required."); } if(isNaN(p)||p<=0){ playError(); return alert("Valid price required."); }
+      if(img.includes('github.com') && img.includes('/blob/')) img = img.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
       const cId = 'custom_'+Date.now();
       cart[`${cId}|Custom`] = { id:cId, name:"✨ "+n, variant:"Custom", price:p, qty:q, img:img||null };
       document.getElementById('customDishModal').classList.add('hidden');
@@ -508,7 +453,7 @@
         return { orderId:e.orderId||tid, table:tv, phone:customerPhone, line_items:m, total:getTot(m), status:'pending', timestamp:Date.now(), paymentMethod:e.paymentMethod||'' };
       }, (err, com)=>{
         if(err){ playError(); alert('Network error. Try again.'); b.disabled=false; return; }
-        if(com){ Object.keys(su).forEach(id=>db.ref(`menu/${id}/stock_count`).transaction(c=>Math.max(0,(c||0)-su[id]))); playSuccess(); vibrate([30,40,30]); fireConfetti(); showFunToast("Order Sent! 👑"); cart={}; document.getElementById('orderNotes').value=''; if(cartExpanded) toggleCart(); updateCartUI(); listenToRunningTab(); }
+        if(com){ Object.keys(su).forEach(id=>db.ref(`menu/${id}/stock_count`).transaction(c=>Math.max(0,(c||0)-su[id]))); playSuccess(); vibrate([30,40,30]); fireConfetti(); showFunToast("Order Sent! 👑"); speakText("Your royal order has been sent to the kitchen."); cart={}; document.getElementById('orderNotes').value=''; if(cartExpanded) toggleCart(); updateCartUI(); listenToRunningTab(); }
         b.disabled=false;
       });
     };
@@ -519,9 +464,30 @@
         if(!e||!e.line_items||!e.line_items[lk]||e.status!=='pending'||e.line_items[lk].cancelled) return e;
         e.line_items[lk].cancelled=true; e.total=getTot(e.line_items); return e;
       }, (err, com, sn)=>{
-        if(com){ const o=sn?.val(), li=o?.line_items?.[lk]; if(li?.cancelled){ if(li.itemId&&li.qty&&menuData[li.itemId]) db.ref(`menu/${li.itemId}/stock_count`).transaction(c=>(c||0)+Number(li.qty)); playNotify(); showFunToast('Item Cancelled'); } else { playError(); alert('Kitchen already started cooking!'); } }
+        if(com){ const o=sn?.val(), li=o?.line_items?.[lk]; if(li?.cancelled){ if(li.itemId&&li.qty&&menuData[li.itemId]) db.ref(`menu/${li.itemId}/stock_count`).transaction(c=>(c||0)+Number(li.qty)); playNotify(); showFunToast('Item Cancelled'); } }
       });
     };
+
+    function updateProgressBar(status) {
+      const line = document.getElementById('progressLine');
+      const s1 = document.getElementById('step1'), s2 = document.getElementById('step2'), s3 = document.getElementById('step3'), s4 = document.getElementById('step4');
+      [s1,s2,s3,s4].forEach(s=>s.classList.remove('progress-active', 'bg-amber-400'));
+      [s1,s2,s3,s4].forEach(s=>s.classList.add('bg-slate-600'));
+      
+      if(status === 'pending') { line.style.width = '0%'; s1.classList.add('progress-active','bg-amber-400'); }
+      else if(status === 'cooking') { line.style.width = '33%'; s1.classList.add('bg-amber-400'); s2.classList.add('progress-active','bg-amber-400'); }
+      else if(status === 'served') { line.style.width = '66%'; [s1,s2].forEach(s=>s.classList.add('bg-amber-400')); s3.classList.add('progress-active','bg-amber-400'); }
+      else if(status.includes('bill')) { line.style.width = '100%'; [s1,s2,s3].forEach(s=>s.classList.add('bg-amber-400')); s4.classList.add('progress-active','bg-amber-400'); }
+    }
+
+    // --- Dynamic UPI Generation ---
+    function generateLiveUPICode(total) {
+      const upiString = `upi://pay?pa=${encodeURIComponent(UPI_ID)}&pn=${encodeURIComponent(UPI_PAYEE_NAME)}&am=${total}&cu=INR`;
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiString)}&margin=10`;
+      document.getElementById('upiQRCode').src = qrUrl;
+      document.getElementById('upiAmountDisplay').innerText = `₹${total}`;
+      document.getElementById('gpayDirectLink').href = upiString;
+    }
 
     window.requestBill = function(m) {
       db.ref(`active_tables/table_${document.getElementById('tableNum').value}`).update({status:'bill_requested', paymentMethod:m})
@@ -554,15 +520,22 @@
           const sc = o.status!==lKS; activeTableData=o; tr.classList.remove('hidden');
           if(tr.classList.contains('hidden')){ tr.classList.replace('hidden','tracker-pop-in'); tr.scrollIntoView({behavior:'smooth'}); }
           document.getElementById('runningTotalDisplay').innerText = `₹${o.total}`; renderOrdered(o, `table_${o.table}`);
+          updateProgressBar(o.status);
+          
           rb.disabled=false; rb.classList.remove('opacity-50','cursor-not-allowed');
           if(o.status==='pending'){ st.innerText="Order Sent!"; st.className="text-3xl font-black text-amber-400 uppercase tracking-tight"; fs.classList.add('hidden'); rb.classList.remove('hidden'); ps.classList.add('hidden'); rb.innerText="Request Final Bill"; }
-          else if(o.status==='cooking'){ if(sc)playNotify(); st.innerText="Cooking..."; st.className="text-3xl font-black text-blue-400 uppercase tracking-tight"; fs.classList.add('hidden'); rb.classList.remove('hidden'); ps.classList.add('hidden'); rb.innerText="Request Final Bill"; }
-          else if(o.status==='served'){ if(sc)playBell(); st.innerText="Food Served!"; st.className="text-3xl font-black text-emerald-400 uppercase tracking-tight"; fs.classList.remove('hidden'); ua.classList.add('hidden'); rb.classList.remove('hidden'); ps.classList.add('hidden'); rb.innerText="Request Final Bill"; }
+          else if(o.status==='cooking'){ if(sc){ playNotify(); speakText("The chef is preparing your meal."); } st.innerText="Cooking..."; st.className="text-3xl font-black text-blue-400 uppercase tracking-tight"; fs.classList.add('hidden'); rb.classList.remove('hidden'); ps.classList.add('hidden'); rb.innerText="Request Final Bill"; }
+          else if(o.status==='served'){ if(sc){ playBell(); speakText("Your food is ready, enjoy your meal."); } st.innerText="Food Served!"; st.className="text-3xl font-black text-emerald-400 uppercase tracking-tight"; fs.classList.remove('hidden'); ua.classList.add('hidden'); rb.classList.remove('hidden'); ps.classList.add('hidden'); rb.innerText="Request Final Bill"; }
           else if(o.status==='bill_requested'){ st.innerText="Waiting for Bill"; st.className="text-3xl font-black text-white uppercase tracking-tight"; fs.classList.remove('hidden'); ua.classList.add('hidden'); rb.classList.remove('hidden'); ps.classList.add('hidden'); rb.innerText="Staff on the way..."; rb.disabled=true; rb.classList.add('opacity-50','cursor-not-allowed'); }
-          else if(o.status==='bill_ready'){ if(sc)playNotify(); st.innerText="Please Pay Bill"; st.className="text-3xl font-black text-white uppercase tracking-tight"; if(o.paymentMethod==='UPI'){ ua.classList.remove('hidden'); const ul=`upi://pay?pa=${encodeURIComponent(UPI_ID)}&pn=${encodeURIComponent(UPI_PAYEE_NAME)}&am=${o.total}&cu=INR`; document.getElementById('gpayDirectLink').href=ul; } else ua.classList.add('hidden'); fs.classList.remove('hidden'); rb.classList.add('hidden'); ps.classList.add('hidden'); }
+          else if(o.status==='bill_ready'){ 
+            if(sc) { playNotify(); speakText("Your bill is ready to be paid."); }
+            st.innerText="Please Pay Bill"; st.className="text-3xl font-black text-white uppercase tracking-tight"; 
+            if(o.paymentMethod==='UPI'){ ua.classList.remove('hidden'); generateLiveUPICode(o.total); } else ua.classList.add('hidden'); 
+            fs.classList.remove('hidden'); rb.classList.add('hidden'); ps.classList.add('hidden'); 
+          }
           lKS = o.status;
         } else {
-          if(activeTableData){ tr.classList.add('hidden'); activeTableData=null; lKS=null; playBell(); fireConfetti(); alert("Table Cleared! Thank you."); localStorage.removeItem('td_cust_phone'); setTimeout(()=>location.reload(), 1500); }
+          if(activeTableData){ tr.classList.add('hidden'); activeTableData=null; lKS=null; playBell(); fireConfetti(); speakText("Thank you for dining with Taj Darbar."); alert("Table Cleared! Thank you."); localStorage.removeItem('td_cust_phone'); setTimeout(()=>location.reload(), 1500); }
         }
       });
     }
