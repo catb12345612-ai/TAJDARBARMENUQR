@@ -1,0 +1,78 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Taj Darbar Staff</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<script>tailwind.config={theme:{extend:{colors:{primary:'#7a0f1c',gold:'#c9a24b',light:'#f4f1ea',side:'#2b1a12'}}}}</script></head>
+<body class="bg-light text-slate-800">
+<div id="lg" class="fixed inset-0 bg-side z-50 flex items-center justify-center p-5"><div class="bg-white p-8 rounded-3xl w-full max-w-sm text-center border-t-4 border-gold">
+<h2 class="text-2xl font-black mb-4">Taj Darbar Staff Login</h2><input id="em" type="email" placeholder="Email" class="w-full p-3 bg-light rounded-xl mb-3 font-bold outline-none"><input id="pw" type="password" placeholder="Password" class="w-full p-3 bg-light rounded-xl mb-4 font-bold outline-none">
+<button id="go" class="w-full bg-primary text-gold font-black py-3 rounded-xl">LOGIN</button></div></div>
+<div id="app" class="hidden"><nav class="bg-side text-white p-3 flex gap-2 items-center flex-wrap sticky top-0 z-30"><b class="text-gold mr-2">Taj Darbar</b><span id="rl" class="text-xs bg-white/10 px-2 py-1 rounded"></span>
+<button onclick="tab('fl')" class="px-3 py-2 rounded-lg bg-white/10 text-sm font-bold">📦 Floor</button><button onclick="tab('sv')" class="px-3 py-2 rounded-lg bg-white/10 text-sm font-bold">🛎️ Requests <span id="sb" class="bg-red-500 rounded-full px-2 text-xs">0</span></button>
+<button onclick="tab('mn')" class="adm px-3 py-2 rounded-lg bg-white/10 text-sm font-bold">🍔 Menu</button><button onclick="tab('an')" class="adm px-3 py-2 rounded-lg bg-white/10 text-sm font-bold">📈 Sales</button><button onclick="tab('fe')" class="adm px-3 py-2 rounded-lg bg-white/10 text-sm font-bold">💬 Feedback</button>
+<button onclick="auth.signOut()" class="ml-auto px-3 py-2 rounded-lg bg-red-500/20 text-red-300 text-sm font-bold">Logout</button></nav>
+<main class="p-4"><section id="t-fl" class="tb"><div id="fl" class="grid gap-4 md:grid-cols-2 lg:grid-cols-3"></div></section>
+<section id="t-sv" class="tb hidden"><div id="svl" class="grid gap-4 md:grid-cols-3"></div></section>
+<section id="t-mn" class="tb hidden"><div class="bg-white p-4 rounded-2xl mb-4 flex gap-2 flex-wrap items-end"><b class="w-full">➕ Add item</b>
+<input id="nn" placeholder="Dish name" class="p-2 bg-light rounded-lg font-bold"><select id="nc" class="p-2 bg-light rounded-lg font-bold"></select><input id="np" type="number" placeholder="Price" class="p-2 bg-light rounded-lg font-bold w-24">
+<button onclick="addItem()" class="bg-primary text-gold px-4 py-2 rounded-lg font-black">ADD</button><button onclick="if(confirm('Replace whole menu with the 83-item Taj Darbar menu?'))seedMenu().then(()=>alert('Menu loaded'))" class="bg-red-50 text-red-600 px-4 py-2 rounded-lg font-black ml-auto">Load Taj Darbar menu (83 items)</button></div>
+<input id="ms" oninput="menuUI()" placeholder="🔍 Search" class="p-2 rounded-lg border mb-3 w-full max-w-sm"><div id="ml" class="grid gap-3 xl:grid-cols-2"></div></section>
+<section id="t-an" class="tb hidden"><div id="tl" class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4"></div><div class="bg-white rounded-2xl p-3 overflow-x-auto"><table class="w-full text-sm"><tbody id="lg2"></tbody></table></div></section>
+<section id="t-fe" class="tb hidden"><div id="fbl" class="space-y-2"></div></section></main></div>
+<div id="pk" class="hidden fixed inset-0 bg-black/70 z-50 p-4 flex items-center justify-center"><div class="bg-white rounded-3xl p-5 w-full max-w-2xl max-h-[85vh] overflow-y-auto">
+<div class="flex justify-between mb-3"><b>Choose a picture</b><button onclick="$('pk').classList.add('hidden')" class="font-black">✕</button></div>
+<div class="flex gap-2 mb-3"><label class="bg-primary text-gold px-3 py-2 rounded-lg font-black text-sm cursor-pointer">⬆ Upload new<input type="file" accept="image/*" hidden onchange="upl(this.files[0])"></label><button onclick="byName()" class="bg-light px-3 py-2 rounded-lg font-black text-sm">Type GitHub file name</button></div>
+<div id="pg" class="grid grid-cols-3 sm:grid-cols-4 gap-2"></div></div></div>
+<script src="firebase.js"></script>
+<script>
+const $=id=>document.getElementById(id),today=()=>new Date().toISOString().slice(0,10);let role=null,T={},M={},G={},pid=null,pend=0,started=false;
+$("nc").innerHTML=CATS.map(c=>`<option>${c}</option>`).join("");
+$("go").onclick=()=>auth.signInWithEmailAndPassword($("em").value,$("pw").value).catch(x=>alert(x.message));
+auth.onAuthStateChanged(u=>{if(!u||u.isAnonymous){$("lg").classList.remove("hidden");return}
+ db.ref("roles/"+u.uid).once("value").then(s=>{role=s.val();if(!role){alert("No role assigned to this account. Ask the owner.");auth.signOut();return}
+ $("lg").classList.add("hidden");$("app").classList.remove("hidden");$("rl").textContent=role.toUpperCase();if(role!="admin")document.querySelectorAll(".adm").forEach(x=>x.remove());if(!started){started=true;start()}}).catch(x=>alert("Role check failed: "+x.message))});
+function tab(t){document.querySelectorAll(".tb").forEach(x=>x.classList.add("hidden"));$("t-"+t).classList.remove("hidden")}
+function beep(){try{const c=new AudioContext(),o=c.createOscillator();o.connect(c.destination);o.frequency.value=880;o.start();o.stop(c.currentTime+.4)}catch(x){}}
+function start(){
+ db.ref("active_tables").on("value",s=>{T=s.val()||{};const p=Object.values(T).filter(t=>t.status=="pending"||t.status=="bill_requested").length;if(p>pend)beep();pend=p;floor()},x=>alert(x.message));
+ db.ref("service_requests").limitToLast(50).on("value",s=>{const a=Object.entries(s.val()||{}).filter(([,r])=>r.status=="pending");$("sb").textContent=a.length;
+  $("svl").innerHTML=a.map(([id,r])=>`<div class="bg-white p-4 rounded-2xl border-2 border-blue-400"><b>${e(r.request_type)}</b><p class="text-2xl font-black">Table ${e(r.table)}</p><p class="text-xs">📞 ${e(r.phone)}</p><button onclick="db.ref('service_requests/${id}').update({status:'resolved'})" class="w-full mt-3 bg-emerald-50 text-emerald-700 py-2 rounded-xl font-black">✅ Resolved</button></div>`).join("")||"<p class='text-slate-400 font-bold'>No requests.</p>"});
+ if(role!="admin")return;
+ db.ref("menu").on("value",s=>{M=s.val()||{};menuUI()});db.ref("gallery").on("value",s=>{G=s.val()||{}});
+ db.ref("tallies/daily/"+today()).on("value",s=>{const d=s.val()||{};$("tl").innerHTML=[["Total",d.total],["Cash",d.cash],["UPI",d.upi],["Card",d.card]].map(([k,v])=>`<div class="bg-white p-4 rounded-2xl"><p class="text-xs font-black text-slate-400">${k}</p><p class="text-2xl font-black">₹${v||0}</p></div>`).join("")});
+ db.ref("daily_logs/"+today()).on("value",s=>{$("lg2").innerHTML=Object.values(s.val()||{}).map(l=>`<tr class="border-b"><td class="p-2">${e(l.time)}</td><td>T-${e(l.table)}</td><td>${e(l.method)}</td><td class="text-xs">${e(l.items)}</td><td class="font-black text-right">₹${l.total}</td></tr>`).join("")});
+ db.ref("feedback").limitToLast(100).on("value",s=>{$("fbl").innerHTML=Object.values(s.val()||{}).reverse().map(f=>`<div class="bg-white p-3 rounded-xl"><b>Table ${e(f.table)} · ${e(f.rating)}</b><p class="text-sm">${e(f.note)}</p></div>`).join("")||"No feedback yet."})}
+function floor(){$("fl").innerHTML=Object.entries(T).sort((a,b)=>a[1].timestamp-b[1].timestamp).map(([id,t])=>{const s=t.status;let b="";
+ if(s=="pending")b=`<button onclick="kot('${id}')" class="w-full bg-blue-600 text-white py-3 rounded-xl font-black">🖨️ Print KOT</button>`;
+ if(s=="cooking")b=`<button onclick="kot('${id}',1)" class="w-full bg-blue-600 text-white py-2 rounded-xl font-black mb-2">🖨️ Re-print KOT</button><button onclick="upd('${id}','served')" class="w-full bg-emerald-500 text-white py-2 rounded-xl font-black">✅ Mark Served</button>`;
+ if(s=="bill_requested")b=`<button onclick="upd('${id}','bill_ready')" class="w-full bg-amber-500 text-white py-3 rounded-xl font-black">Confirm bill (${e(t.paymentMethod)})</button>`;
+ if(role=="admin"&&(s=="served"||s=="bill_ready"||s=="bill_requested"))b+=`<button onclick="clr('${id}')" class="w-full mt-2 bg-side text-white py-3 rounded-xl font-black">Clear & Bill</button>`;
+ return`<div class="bg-white rounded-3xl p-5 border-4 ${s=="pending"||s=="bill_requested"?'border-red-500 animate-pulse':'border-blue-400'}"><div class="flex justify-between"><b class="text-2xl">Table ${e(t.table)}</b><span class="text-xs font-black bg-light px-2 py-1 rounded">${e(s)}</span></div>
+ <p class="text-sm my-3">${(t.items||"").split(" | ").map(x=>"• "+e(x)).join("<br>")}</p><div class="flex justify-between mb-3"><span class="text-xs">📞 ${e(t.phone)}</span><b class="text-xl">₹${t.total}</b></div>${b}
+ ${role=="admin"?`<button onclick="cxl('${id}')" class="w-full mt-2 bg-red-50 text-red-500 py-2 rounded-xl font-bold text-xs">🗑️ Cancel order</button>`:""}</div>`}).join("")||"<p class='text-slate-400 font-bold'>No active orders.</p>"}
+function upd(id,s){db.ref("active_tables/"+id).update({status:s})}
+function ph(h){const f=document.createElement("iframe");f.style.cssText="position:fixed;width:0;height:0;border:0";document.body.appendChild(f);const d=f.contentDocument;d.open();d.write(h);d.close();setTimeout(()=>{f.contentWindow.print();setTimeout(()=>f.remove(),2000)},400)}
+function kot(id,re){const t=T[id];if(!t)return;if(!re)upd(id,"cooking");ph(`<body style="font-family:monospace;width:300px"><h2 style="text-align:center">*** KOT ***<br>TAJ DARBAR</h2><h3>Table: ${e(t.table)}</h3><p>${new Date().toLocaleTimeString()}</p><hr><b>${(t.items||"").split(" | ").map(e).join("<br>")}</b><hr></body>`)}
+function clr(id){const t=T[id];if(!t||!confirm("Clear table and record payment?"))return;const d=today(),m=(t.paymentMethod||"CASH").toUpperCase(),k=["CASH","UPI","CARD"].includes(m)?m.toLowerCase():"cash";
+ db.ref("tallies/daily/"+d).transaction(v=>{v=v||{total:0,cash:0,upi:0,card:0};v.total+=+t.total;v[k]+=+t.total;return v});
+ db.ref("daily_logs/"+d+"/"+t.orderId).set({time:new Date().toLocaleTimeString(),table:t.table,phone:t.phone,items:t.items,total:t.total,method:m});
+ fetch(SHEET,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify({orderId:t.orderId,tableNo:t.table,phone:t.phone,totalAmount:t.total,paymentMethod:m,itemsDetails:t.items})}).catch(()=>{});
+ const bill=`TAJ DARBAR\nTable: ${t.table}\nMobile: ${t.phone}\n------------\n${(t.items||"").replace(/ \| /g,"\n")}\n------------\nTOTAL: Rs. ${t.total}`;
+ ph(`<body style="font-family:monospace;width:300px"><pre>${e(bill)}</pre></body>`);
+ if(t.phone)window.open("https://wa.me/91"+t.phone+"?text="+encodeURIComponent(bill),"_blank");db.ref("active_tables/"+id).remove()}
+function cxl(id){const t=T[id];if(!t||!confirm("Cancel entire order? No revenue will be recorded."))return;db.ref("cancelled_logs/"+today()).push({time:new Date().toLocaleTimeString(),table:t.table,phone:t.phone,items:t.items,total:t.total,cancelledBy:auth.currentUser.email});db.ref("active_tables/"+id).remove()}
+function menuUI(){const q=$("ms").value.toLowerCase();$("ml").innerHTML=Object.entries(M).filter(([,m])=>!q||(m.name+m.category).toLowerCase().includes(q)).map(([id,m])=>`<div class="bg-white p-3 rounded-2xl flex gap-2 items-center flex-wrap">
+ <img src="${e(img(m))}" onclick="openPk('${id}')" title="Change picture" class="w-16 h-16 rounded-xl object-cover cursor-pointer border-2 border-gold" onerror="this.src='images/tajdarbarface_.webp'">
+ <input data-i="${id}" data-k="name" value="${e(m.name)}" class="flex-1 min-w-[140px] p-2 bg-light rounded-lg font-bold text-sm"><input data-i="${id}" data-k="base_price" type="number" value="${m.base_price}" class="w-20 p-2 bg-light rounded-lg font-bold text-sm">
+ <input data-i="${id}" data-k="stock_count" type="number" value="${m.stock_count||0}" class="w-16 p-2 bg-light rounded-lg font-bold text-sm"><label class="text-xs font-bold"><input data-i="${id}" data-k="is_special" type="checkbox" ${m.is_special?"checked":""}>⭐</label>
+ <button onclick="if(confirm('Delete?'))db.ref('menu/${id}').remove()" class="text-red-500 font-black">🗑️</button></div>`).join("")}
+document.addEventListener("change",x=>{const d=x.target.dataset;if(!d.i)return;const v=x.target.type=="checkbox"?x.target.checked:x.target.type=="number"?+x.target.value:x.target.value;db.ref("menu/"+d.i).update({[d.k]:v})});
+function addItem(){const n=$("nn").value.trim(),p=+$("np").value,c=$("nc").value;if(!n||!(p>0))return alert("Enter name and price");const id="item_"+Date.now();
+ db.ref("menu/"+id).set({name:n,category:c,base_price:p,stock_count:60,is_special:false,img:pickImg(n,c)}).then(()=>{$("nn").value=$("np").value="";openPk(id)})}
+function openPk(id){pid=id;$("pg").innerHTML=IMAGES.map(f=>`<img src="images/${f}" onclick="setImg('${f}')" class="h-24 w-full object-cover rounded-xl cursor-pointer hover:ring-4 ring-gold">`).join("")+Object.values(G).map(g=>`<img src="${g.src}" onclick="setSrc(this.src)" class="h-24 w-full object-cover rounded-xl cursor-pointer hover:ring-4 ring-gold">`).join("");$("pk").classList.remove("hidden")}
+function setImg(f){db.ref("menu/"+pid).update({img:f,image:null});$("pk").classList.add("hidden")}
+function setSrc(s){db.ref("menu/"+pid).update({image:s,img:null});$("pk").classList.add("hidden")}
+function byName(){const f=prompt("Exact file name inside your GitHub images/ folder (e.g. biryani.jpg)");if(f)setImg(f.trim())}
+function upl(f){if(!f)return;const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{const k=Math.min(1,700/i.width),c=document.createElement("canvas");c.width=i.width*k;c.height=i.height*k;c.getContext("2d").drawImage(i,0,0,c.width,c.height);const s=c.toDataURL("image/jpeg",.75);db.ref("gallery").push({src:s});setSrc(s)};i.src=r.result};r.readAsDataURL(f)}
+</script></body></html>
