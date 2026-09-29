@@ -1,78 +1,243 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Taj Darbar Staff</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-<script>tailwind.config={theme:{extend:{colors:{primary:'#7a0f1c',gold:'#c9a24b',light:'#f4f1ea',side:'#2b1a12'}}}}</script></head>
-<body class="bg-light text-slate-800">
-<div id="lg" class="fixed inset-0 bg-side z-50 flex items-center justify-center p-5"><div class="bg-white p-8 rounded-3xl w-full max-w-sm text-center border-t-4 border-gold">
-<h2 class="text-2xl font-black mb-4">Taj Darbar Staff Login</h2><input id="em" type="email" placeholder="Email" class="w-full p-3 bg-light rounded-xl mb-3 font-bold outline-none"><input id="pw" type="password" placeholder="Password" class="w-full p-3 bg-light rounded-xl mb-4 font-bold outline-none">
-<button id="go" class="w-full bg-primary text-gold font-black py-3 rounded-xl">LOGIN</button></div></div>
-<div id="app" class="hidden"><nav class="bg-side text-white p-3 flex gap-2 items-center flex-wrap sticky top-0 z-30"><b class="text-gold mr-2">Taj Darbar</b><span id="rl" class="text-xs bg-white/10 px-2 py-1 rounded"></span>
-<button onclick="tab('fl')" class="px-3 py-2 rounded-lg bg-white/10 text-sm font-bold">📦 Floor</button><button onclick="tab('sv')" class="px-3 py-2 rounded-lg bg-white/10 text-sm font-bold">🛎️ Requests <span id="sb" class="bg-red-500 rounded-full px-2 text-xs">0</span></button>
-<button onclick="tab('mn')" class="adm px-3 py-2 rounded-lg bg-white/10 text-sm font-bold">🍔 Menu</button><button onclick="tab('an')" class="adm px-3 py-2 rounded-lg bg-white/10 text-sm font-bold">📈 Sales</button><button onclick="tab('fe')" class="adm px-3 py-2 rounded-lg bg-white/10 text-sm font-bold">💬 Feedback</button>
-<button onclick="auth.signOut()" class="ml-auto px-3 py-2 rounded-lg bg-red-500/20 text-red-300 text-sm font-bold">Logout</button></nav>
-<main class="p-4"><section id="t-fl" class="tb"><div id="fl" class="grid gap-4 md:grid-cols-2 lg:grid-cols-3"></div></section>
-<section id="t-sv" class="tb hidden"><div id="svl" class="grid gap-4 md:grid-cols-3"></div></section>
-<section id="t-mn" class="tb hidden"><div class="bg-white p-4 rounded-2xl mb-4 flex gap-2 flex-wrap items-end"><b class="w-full">➕ Add item</b>
-<input id="nn" placeholder="Dish name" class="p-2 bg-light rounded-lg font-bold"><select id="nc" class="p-2 bg-light rounded-lg font-bold"></select><input id="np" type="number" placeholder="Price" class="p-2 bg-light rounded-lg font-bold w-24">
-<button onclick="addItem()" class="bg-primary text-gold px-4 py-2 rounded-lg font-black">ADD</button><button onclick="if(confirm('Replace whole menu with the 83-item Taj Darbar menu?'))seedMenu().then(()=>alert('Menu loaded'))" class="bg-red-50 text-red-600 px-4 py-2 rounded-lg font-black ml-auto">Load Taj Darbar menu (83 items)</button></div>
-<input id="ms" oninput="menuUI()" placeholder="🔍 Search" class="p-2 rounded-lg border mb-3 w-full max-w-sm"><div id="ml" class="grid gap-3 xl:grid-cols-2"></div></section>
-<section id="t-an" class="tb hidden"><div id="tl" class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4"></div><div class="bg-white rounded-2xl p-3 overflow-x-auto"><table class="w-full text-sm"><tbody id="lg2"></tbody></table></div></section>
-<section id="t-fe" class="tb hidden"><div id="fbl" class="space-y-2"></div></section></main></div>
-<div id="pk" class="hidden fixed inset-0 bg-black/70 z-50 p-4 flex items-center justify-center"><div class="bg-white rounded-3xl p-5 w-full max-w-2xl max-h-[85vh] overflow-y-auto">
-<div class="flex justify-between mb-3"><b>Choose a picture</b><button onclick="$('pk').classList.add('hidden')" class="font-black">✕</button></div>
-<div class="flex gap-2 mb-3"><label class="bg-primary text-gold px-3 py-2 rounded-lg font-black text-sm cursor-pointer">⬆ Upload new<input type="file" accept="image/*" hidden onchange="upl(this.files[0])"></label><button onclick="byName()" class="bg-light px-3 py-2 rounded-lg font-black text-sm">Type GitHub file name</button></div>
-<div id="pg" class="grid grid-cols-3 sm:grid-cols-4 gap-2"></div></div></div>
-<script src="firebase.js"></script>
-<script>
-const $=id=>document.getElementById(id),today=()=>new Date().toISOString().slice(0,10);let role=null,T={},M={},G={},pid=null,pend=0,started=false;
-$("nc").innerHTML=CATS.map(c=>`<option>${c}</option>`).join("");
-$("go").onclick=()=>auth.signInWithEmailAndPassword($("em").value,$("pw").value).catch(x=>alert(x.message));
-auth.onAuthStateChanged(u=>{if(!u||u.isAnonymous){$("lg").classList.remove("hidden");return}
- db.ref("roles/"+u.uid).once("value").then(s=>{role=s.val();if(!role){alert("No role assigned to this account. Ask the owner.");auth.signOut();return}
- $("lg").classList.add("hidden");$("app").classList.remove("hidden");$("rl").textContent=role.toUpperCase();if(role!="admin")document.querySelectorAll(".adm").forEach(x=>x.remove());if(!started){started=true;start()}}).catch(x=>alert("Role check failed: "+x.message))});
-function tab(t){document.querySelectorAll(".tb").forEach(x=>x.classList.add("hidden"));$("t-"+t).classList.remove("hidden")}
-function beep(){try{const c=new AudioContext(),o=c.createOscillator();o.connect(c.destination);o.frequency.value=880;o.start();o.stop(c.currentTime+.4)}catch(x){}}
-function start(){
- db.ref("active_tables").on("value",s=>{T=s.val()||{};const p=Object.values(T).filter(t=>t.status=="pending"||t.status=="bill_requested").length;if(p>pend)beep();pend=p;floor()},x=>alert(x.message));
- db.ref("service_requests").limitToLast(50).on("value",s=>{const a=Object.entries(s.val()||{}).filter(([,r])=>r.status=="pending");$("sb").textContent=a.length;
-  $("svl").innerHTML=a.map(([id,r])=>`<div class="bg-white p-4 rounded-2xl border-2 border-blue-400"><b>${e(r.request_type)}</b><p class="text-2xl font-black">Table ${e(r.table)}</p><p class="text-xs">📞 ${e(r.phone)}</p><button onclick="db.ref('service_requests/${id}').update({status:'resolved'})" class="w-full mt-3 bg-emerald-50 text-emerald-700 py-2 rounded-xl font-black">✅ Resolved</button></div>`).join("")||"<p class='text-slate-400 font-bold'>No requests.</p>"});
- if(role!="admin")return;
- db.ref("menu").on("value",s=>{M=s.val()||{};menuUI()});db.ref("gallery").on("value",s=>{G=s.val()||{}});
- db.ref("tallies/daily/"+today()).on("value",s=>{const d=s.val()||{};$("tl").innerHTML=[["Total",d.total],["Cash",d.cash],["UPI",d.upi],["Card",d.card]].map(([k,v])=>`<div class="bg-white p-4 rounded-2xl"><p class="text-xs font-black text-slate-400">${k}</p><p class="text-2xl font-black">₹${v||0}</p></div>`).join("")});
- db.ref("daily_logs/"+today()).on("value",s=>{$("lg2").innerHTML=Object.values(s.val()||{}).map(l=>`<tr class="border-b"><td class="p-2">${e(l.time)}</td><td>T-${e(l.table)}</td><td>${e(l.method)}</td><td class="text-xs">${e(l.items)}</td><td class="font-black text-right">₹${l.total}</td></tr>`).join("")});
- db.ref("feedback").limitToLast(100).on("value",s=>{$("fbl").innerHTML=Object.values(s.val()||{}).reverse().map(f=>`<div class="bg-white p-3 rounded-xl"><b>Table ${e(f.table)} · ${e(f.rating)}</b><p class="text-sm">${e(f.note)}</p></div>`).join("")||"No feedback yet."})}
-function floor(){$("fl").innerHTML=Object.entries(T).sort((a,b)=>a[1].timestamp-b[1].timestamp).map(([id,t])=>{const s=t.status;let b="";
- if(s=="pending")b=`<button onclick="kot('${id}')" class="w-full bg-blue-600 text-white py-3 rounded-xl font-black">🖨️ Print KOT</button>`;
- if(s=="cooking")b=`<button onclick="kot('${id}',1)" class="w-full bg-blue-600 text-white py-2 rounded-xl font-black mb-2">🖨️ Re-print KOT</button><button onclick="upd('${id}','served')" class="w-full bg-emerald-500 text-white py-2 rounded-xl font-black">✅ Mark Served</button>`;
- if(s=="bill_requested")b=`<button onclick="upd('${id}','bill_ready')" class="w-full bg-amber-500 text-white py-3 rounded-xl font-black">Confirm bill (${e(t.paymentMethod)})</button>`;
- if(role=="admin"&&(s=="served"||s=="bill_ready"||s=="bill_requested"))b+=`<button onclick="clr('${id}')" class="w-full mt-2 bg-side text-white py-3 rounded-xl font-black">Clear & Bill</button>`;
- return`<div class="bg-white rounded-3xl p-5 border-4 ${s=="pending"||s=="bill_requested"?'border-red-500 animate-pulse':'border-blue-400'}"><div class="flex justify-between"><b class="text-2xl">Table ${e(t.table)}</b><span class="text-xs font-black bg-light px-2 py-1 rounded">${e(s)}</span></div>
- <p class="text-sm my-3">${(t.items||"").split(" | ").map(x=>"• "+e(x)).join("<br>")}</p><div class="flex justify-between mb-3"><span class="text-xs">📞 ${e(t.phone)}</span><b class="text-xl">₹${t.total}</b></div>${b}
- ${role=="admin"?`<button onclick="cxl('${id}')" class="w-full mt-2 bg-red-50 text-red-500 py-2 rounded-xl font-bold text-xs">🗑️ Cancel order</button>`:""}</div>`}).join("")||"<p class='text-slate-400 font-bold'>No active orders.</p>"}
-function upd(id,s){db.ref("active_tables/"+id).update({status:s})}
-function ph(h){const f=document.createElement("iframe");f.style.cssText="position:fixed;width:0;height:0;border:0";document.body.appendChild(f);const d=f.contentDocument;d.open();d.write(h);d.close();setTimeout(()=>{f.contentWindow.print();setTimeout(()=>f.remove(),2000)},400)}
-function kot(id,re){const t=T[id];if(!t)return;if(!re)upd(id,"cooking");ph(`<body style="font-family:monospace;width:300px"><h2 style="text-align:center">*** KOT ***<br>TAJ DARBAR</h2><h3>Table: ${e(t.table)}</h3><p>${new Date().toLocaleTimeString()}</p><hr><b>${(t.items||"").split(" | ").map(e).join("<br>")}</b><hr></body>`)}
-function clr(id){const t=T[id];if(!t||!confirm("Clear table and record payment?"))return;const d=today(),m=(t.paymentMethod||"CASH").toUpperCase(),k=["CASH","UPI","CARD"].includes(m)?m.toLowerCase():"cash";
- db.ref("tallies/daily/"+d).transaction(v=>{v=v||{total:0,cash:0,upi:0,card:0};v.total+=+t.total;v[k]+=+t.total;return v});
- db.ref("daily_logs/"+d+"/"+t.orderId).set({time:new Date().toLocaleTimeString(),table:t.table,phone:t.phone,items:t.items,total:t.total,method:m});
- fetch(SHEET,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify({orderId:t.orderId,tableNo:t.table,phone:t.phone,totalAmount:t.total,paymentMethod:m,itemsDetails:t.items})}).catch(()=>{});
- const bill=`TAJ DARBAR\nTable: ${t.table}\nMobile: ${t.phone}\n------------\n${(t.items||"").replace(/ \| /g,"\n")}\n------------\nTOTAL: Rs. ${t.total}`;
- ph(`<body style="font-family:monospace;width:300px"><pre>${e(bill)}</pre></body>`);
- if(t.phone)window.open("https://wa.me/91"+t.phone+"?text="+encodeURIComponent(bill),"_blank");db.ref("active_tables/"+id).remove()}
-function cxl(id){const t=T[id];if(!t||!confirm("Cancel entire order? No revenue will be recorded."))return;db.ref("cancelled_logs/"+today()).push({time:new Date().toLocaleTimeString(),table:t.table,phone:t.phone,items:t.items,total:t.total,cancelledBy:auth.currentUser.email});db.ref("active_tables/"+id).remove()}
-function menuUI(){const q=$("ms").value.toLowerCase();$("ml").innerHTML=Object.entries(M).filter(([,m])=>!q||(m.name+m.category).toLowerCase().includes(q)).map(([id,m])=>`<div class="bg-white p-3 rounded-2xl flex gap-2 items-center flex-wrap">
- <img src="${e(img(m))}" onclick="openPk('${id}')" title="Change picture" class="w-16 h-16 rounded-xl object-cover cursor-pointer border-2 border-gold" onerror="this.src='images/tajdarbarface_.webp'">
- <input data-i="${id}" data-k="name" value="${e(m.name)}" class="flex-1 min-w-[140px] p-2 bg-light rounded-lg font-bold text-sm"><input data-i="${id}" data-k="base_price" type="number" value="${m.base_price}" class="w-20 p-2 bg-light rounded-lg font-bold text-sm">
- <input data-i="${id}" data-k="stock_count" type="number" value="${m.stock_count||0}" class="w-16 p-2 bg-light rounded-lg font-bold text-sm"><label class="text-xs font-bold"><input data-i="${id}" data-k="is_special" type="checkbox" ${m.is_special?"checked":""}>⭐</label>
- <button onclick="if(confirm('Delete?'))db.ref('menu/${id}').remove()" class="text-red-500 font-black">🗑️</button></div>`).join("")}
-document.addEventListener("change",x=>{const d=x.target.dataset;if(!d.i)return;const v=x.target.type=="checkbox"?x.target.checked:x.target.type=="number"?+x.target.value:x.target.value;db.ref("menu/"+d.i).update({[d.k]:v})});
-function addItem(){const n=$("nn").value.trim(),p=+$("np").value,c=$("nc").value;if(!n||!(p>0))return alert("Enter name and price");const id="item_"+Date.now();
- db.ref("menu/"+id).set({name:n,category:c,base_price:p,stock_count:60,is_special:false,img:pickImg(n,c)}).then(()=>{$("nn").value=$("np").value="";openPk(id)})}
-function openPk(id){pid=id;$("pg").innerHTML=IMAGES.map(f=>`<img src="images/${f}" onclick="setImg('${f}')" class="h-24 w-full object-cover rounded-xl cursor-pointer hover:ring-4 ring-gold">`).join("")+Object.values(G).map(g=>`<img src="${g.src}" onclick="setSrc(this.src)" class="h-24 w-full object-cover rounded-xl cursor-pointer hover:ring-4 ring-gold">`).join("");$("pk").classList.remove("hidden")}
-function setImg(f){db.ref("menu/"+pid).update({img:f,image:null});$("pk").classList.add("hidden")}
-function setSrc(s){db.ref("menu/"+pid).update({image:s,img:null});$("pk").classList.add("hidden")}
-function byName(){const f=prompt("Exact file name inside your GitHub images/ folder (e.g. biryani.jpg)");if(f)setImg(f.trim())}
-function upl(f){if(!f)return;const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{const k=Math.min(1,700/i.width),c=document.createElement("canvas");c.width=i.width*k;c.height=i.height*k;c.getContext("2d").drawImage(i,0,0,c.width,c.height);const s=c.toDataURL("image/jpeg",.75);db.ref("gallery").push({src:s});setSrc(s)};i.src=r.result};r.readAsDataURL(f)}
-</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Taj Darbar - Staff Workspace</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+  <script>
+    tailwind.config = { theme: { extend: { colors: { primary: '#d97706', sidebar: '#0f172a', light: '#f8fafc', card: '#ffffff' } } } }
+  </script>
+  <style>
+    .dash-card { box-shadow: 0 10px 30px rgba(0,0,0,0.04); border: 1px solid rgba(226,232,240,0.8); }
+    @keyframes redBlueFlash { 0%, 100% { border-color: #ef4444; } 50% { border-color: #f59e0b; } }
+    .urgent-alarm { animation: redBlueFlash 1s infinite; border-width: 4px; }
+  </style>
+</head>
+<body class="font-sans antialiased text-slate-800 bg-light">
+
+  <div id="loginScreen" class="fixed inset-0 bg-sidebar z-[100] flex flex-col items-center justify-center p-5">
+    <div class="bg-card p-10 rounded-3xl text-center w-full max-w-sm shadow-2xl border-t-8 border-primary">
+      <div class="w-16 h-16 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-black shadow-inner">TD</div>
+      <h2 class="text-2xl font-black text-slate-900 mb-2">Taj Darbar Workspace</h2>
+      <input type="password" id="sysPin" placeholder="Enter PIN" class="w-full text-center p-4 bg-slate-50 border border-slate-200 rounded-xl font-black text-2xl outline-none focus:border-primary mb-4 tracking-[0.5em]">
+      <button onclick="attemptLogin()" class="w-full bg-primary text-white font-black py-4 rounded-xl shadow-lg active:scale-95 transition-transform">LOGIN</button>
+    </div>
+  </div>
+
+  <div class="flex h-screen overflow-hidden hidden" id="mainLayout">
+    <aside class="w-64 bg-sidebar text-white flex flex-col shadow-xl z-20">
+      <div class="p-6 border-b border-white/10">
+        <h1 class="font-black text-xl text-primary">Taj Darbar</h1>
+        <p class="text-[10px] font-bold text-slate-400 uppercase mt-1">Role: <span id="roleText" class="text-white"></span></p>
+      </div>
+      <nav class="flex-1 p-4 space-y-2">
+        <button onclick="switchTab('orders')" id="tab-orders" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm bg-primary/10 text-primary tab-btn">📦 Active Floor</button>
+        <button onclick="switchTab('inventory')" id="tab-inventory" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm text-slate-400 hover:bg-white/5 tab-btn admin-only hidden">🍔 Menu Manager</button>
+      </nav>
+      <div class="p-4 border-t border-white/10 text-center">
+        <button onclick="location.reload()" class="text-red-400 font-bold text-sm hover:text-red-300">Log Out</button>
+      </div>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto p-8">
+      
+      <!-- ORDERS TAB -->
+      <section id="view-orders" class="tab-section">
+        <h2 class="text-3xl font-black text-slate-900 mb-8">Floor Operations</h2>
+        <div id="kitchenGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+      </section>
+
+      <!-- INVENTORY / ADMIN TAB -->
+      <section id="view-inventory" class="tab-section hidden">
+        <h2 class="text-3xl font-black text-slate-900 mb-8">Menu Manager</h2>
+        
+        <div class="bg-card p-6 rounded-3xl dash-card mb-8 border-t-4 border-primary">
+          <h3 class="text-lg font-black text-slate-900 mb-4">➕ Add New Dish</h3>
+          <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+            <div class="md:col-span-1"><label class="text-[10px] font-black text-slate-400 block mb-1">Dish Name</label><input type="text" id="newDishName" class="w-full p-3 bg-light border border-slate-200 rounded-xl font-bold text-sm outline-none"></div>
+            <div class="md:col-span-1"><label class="text-[10px] font-black text-slate-400 block mb-1">Category</label>
+              <select id="newDishCat" class="w-full p-3 bg-light border border-slate-200 rounded-xl font-bold text-sm outline-none">
+                <option value="CHICKEN MANDI">CHICKEN MANDI</option><option value="MUTTON MANDI">MUTTON MANDI</option><option value="SEAFOOD MANDI">SEAFOOD MANDI</option><option value="CHICKEN BIRYANI">CHICKEN BIRYANI</option><option value="MIXED MANDI">MIXED MANDI</option><option value="CURRIES">CURRIES</option><option value="DESSERTS">DESSERTS</option>
+              </select>
+            </div>
+            <div class="md:col-span-1"><label class="text-[10px] font-black text-slate-400 block mb-1">Price (₹)</label><input type="number" id="newDishPrice" class="w-full p-3 bg-light border border-slate-200 rounded-xl font-bold text-sm outline-none"></div>
+            <div class="md:col-span-1"><label class="text-[10px] font-black text-slate-400 block mb-1">Image URL</label><input type="text" id="newDishImg" placeholder="Paste link" class="w-full p-3 bg-light border border-slate-200 rounded-xl font-bold text-sm outline-none"></div>
+            <div class="md:col-span-1"><button onclick="addNewDish()" class="w-full bg-primary text-white font-black py-3 rounded-xl active:scale-95 transition-transform">ADD DISH</button></div>
+          </div>
+        </div>
+
+        <div id="inventoryList" class="grid grid-cols-1 xl:grid-cols-2 gap-4"></div>
+
+        <div class="mt-16 pt-8 border-t border-slate-200 text-center">
+          <button onclick="factoryResetSystem()" class="bg-red-50 text-red-600 border border-red-200 px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all">
+            ⚠️ FACTORY RESET: Load Full Taj Darbar Database
+          </button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAc5Nfz9pNp4dNmNr3OKQFcZEaBJ5KH3dg",
+      authDomain: "algani-cafe.firebaseapp.com",
+      databaseURL: "https://algani-cafe-default-rtdb.firebaseio.com",
+      projectId: "algani-cafe",
+      storageBucket: "algani-cafe.firebasestorage.app",
+      messagingSenderId: "44056411552",
+      appId: "1:44056411552:web:a245596401ca636fb0f8c5",
+      measurementId: "G-9GDVR0V5VE"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxxmng1jPefetM-9Xzt28v1Kj3RMuAEmNEBqPS1GAIzYUZH_wMRLkl56Y8YZe83D3_vMg/exec";
+
+    let currentRole = null;
+    let menuCache = {};
+    window.currentTables = {};
+
+    window.attemptLogin = function() {
+      const pin = document.getElementById('sysPin').value.trim();
+      if (pin === 'admin999') currentRole = 'admin';
+      else if (pin === 'waiter999') currentRole = 'waiter';
+      else if (pin === 'kitchen999') currentRole = 'kitchen';
+      else return alert("Invalid PIN");
+
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('mainLayout').classList.remove('hidden');
+      document.getElementById('roleText').innerText = currentRole.toUpperCase();
+      if(currentRole === 'admin') document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+      
+      loadSystem();
+    };
+
+    window.switchTab = function(tab) {
+      document.querySelectorAll('.tab-section').forEach(sec => sec.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        if(b.id === `tab-${tab}`) { b.classList.add('bg-primary/10','text-primary'); b.classList.remove('text-slate-400'); }
+        else { b.classList.remove('bg-primary/10','text-primary'); b.classList.add('text-slate-400'); }
+      });
+      document.getElementById(`view-${tab}`).classList.remove('hidden');
+    };
+
+    function loadSystem() {
+      // Floor Listener
+      db.ref('active_tables').on('value', snap => {
+        const grid = document.getElementById('kitchenGrid'); grid.innerHTML = '';
+        const tables = snap.val() || {};
+        window.currentTables = tables;
+        
+        Object.entries(tables).sort((a,b)=>a[1].timestamp-b[1].timestamp).forEach(([id, table]) => {
+          let border = table.status==='pending'?'urgent-alarm border-red-500':(table.status==='bill_requested'?'urgent-alarm border-amber-500':'border-slate-200');
+          let btnHtml = '';
+          
+          if(currentRole === 'admin') {
+            if(table.status === 'pending' || table.status === 'cooking') {
+               btnHtml = `<button class="w-full bg-blue-600 text-white py-3 rounded-xl font-black mb-2" onclick="db.ref('active_tables/${id}').update({status:'cooking'})">Mark Cooking</button>
+                          <button class="w-full bg-emerald-500 text-white py-3 rounded-xl font-black" onclick="db.ref('active_tables/${id}').update({status:'served'})">Mark Served</button>`;
+            } else {
+               btnHtml = `<button class="w-full bg-slate-900 text-white py-4 rounded-xl font-black" onclick="clearTable('${id}')">Clear & Bill Table</button>`;
+            }
+          } else if(currentRole === 'kitchen') {
+            if(table.status !== 'served' && table.status !== 'bill_requested') {
+              btnHtml = `<button class="w-full bg-blue-600 text-white py-3 rounded-xl font-black mb-2" onclick="db.ref('active_tables/${id}').update({status:'cooking'})">Acknowledge</button>
+                         <button class="w-full bg-emerald-500 text-white py-3 rounded-xl font-black" onclick="db.ref('active_tables/${id}').update({status:'served'})">Food Ready / Served</button>`;
+            } else { btnHtml = `<button class="w-full bg-light text-slate-400 py-4 rounded-xl font-black" disabled>Done</button>`; }
+          }
+
+          let itemsHtml = Object.values(table.line_items||{}).map(li => 
+            `<div class="${li.cancelled?'line-through text-red-400':''} font-semibold text-sm py-1 border-b border-slate-100 flex items-center gap-2">
+              ${li.custom_img ? `<img src="${li.custom_img}" class="w-8 h-8 rounded-md object-cover">` : ''}
+              ${li.name} (x${li.qty})
+            </div>`
+          ).join('');
+
+          grid.innerHTML += `
+            <div class="dash-card bg-card p-6 rounded-3xl ${border} flex flex-col justify-between">
+              <div>
+                <div class="flex justify-between items-center border-b border-slate-100 pb-4 mb-4">
+                  <div><span class="text-[10px] font-black text-slate-400 block">Table</span><span class="font-black text-2xl">${table.table}</span></div>
+                  <span class="text-xs font-black uppercase bg-slate-100 px-3 py-1.5 rounded-lg">${table.status.replace('_',' ')}</span>
+                </div>
+                <div class="mb-4 max-h-48 overflow-y-auto">${itemsHtml}</div>
+              </div>
+              <div>
+                <div class="flex justify-between items-end mb-4">
+                  <span class="text-xs font-bold text-slate-400">📞 ${table.phone}</span>
+                  <span class="font-black text-xl">₹${table.total}</span>
+                </div>
+                ${btnHtml}
+              </div>
+            </div>`;
+        });
+      });
+
+      // Menu Listener
+      if(currentRole === 'admin') {
+        db.ref('menu').on('value', snap => {
+          menuCache = snap.val() || {};
+          const list = document.getElementById('inventoryList'); list.innerHTML = '';
+          Object.entries(menuCache).forEach(([id, item]) => {
+            list.innerHTML += `
+              <div class="dash-card bg-card p-4 rounded-2xl flex items-center gap-4">
+                <img src="${item.image_url}" class="w-16 h-16 rounded-xl object-cover" onerror="this.src='https://images.unsplash.com/photo-1544025162-8111142154ea?w=200&q=80'">
+                <div class="flex-1">
+                  <h4 class="font-black text-sm">${item.name}</h4>
+                  <p class="text-[10px] font-black text-slate-400 uppercase">${item.category} · ₹${item.base_price}</p>
+                </div>
+                <button onclick="db.ref('menu/${id}').remove()" class="text-red-400 font-bold text-xs bg-red-50 px-3 py-2 rounded-lg hover:bg-red-100">Delete</button>
+              </div>`;
+          });
+        });
+      }
+    }
+
+    window.addNewDish = function() {
+      const name = document.getElementById('newDishName').value.trim();
+      const price = parseFloat(document.getElementById('newDishPrice').value);
+      const img = document.getElementById('newDishImg').value.trim() || 'https://images.unsplash.com/photo-1544025162-8111142154ea?w=500&q=80';
+      if(!name || isNaN(price)) return alert("Valid Name and Price required.");
+      
+      db.ref('menu/item_' + Date.now()).set({ name: name, category: document.getElementById('newDishCat').value, base_price: price, image_url: img, is_special: false, stock_count: 100 })
+        .then(() => { document.getElementById('newDishName').value = ''; document.getElementById('newDishPrice').value = ''; document.getElementById('newDishImg').value = ''; });
+    };
+
+    window.clearTable = function(id) {
+      const table = window.currentTables[id];
+      if(!table) return;
+      
+      const sheetPayload = { orderId: table.orderId, tableNo: table.table, phone: table.phone, totalAmount: table.total, paymentMethod: "CASH", itemsDetails: table.items };
+      fetch(WEBHOOK_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(sheetPayload) }).catch(e=>console.log(e));
+      
+      db.ref('active_tables/'+id).remove();
+    };
+
+    const factoryMenuData = {
+      'td_bbq_full_mandi': { name: "BBQ FULL MANDI", category: "CHICKEN MANDI", base_price: 940, stock_count: 100, is_special: false, image_url: "fullchickenmandi..webp" },
+      'td_3pc_bbq_half_mandi': { name: "3 PC BBQ HALF MANDI", category: "CHICKEN MANDI", base_price: 790, stock_count: 100, is_special: true, image_url: "fullchickenmandi 3 pcs..webp" },
+      'td_crispy_chicken_full': { name: "CRISPY CHICKEN FULL MANDI", category: "CHICKEN MANDI", base_price: 950, stock_count: 100, is_special: false, image_url: "fullchickenmandi..webp" },
+      'td_full_chicken_dum_biryani': { name: "FULL CHICKEN DUM BIRYANI", category: "CHICKEN BIRYANI", base_price: 290, stock_count: 100, is_special: false, image_url: "fullchicken.jpeg" },
+      'td_chicken_jumbo_pack': { name: "CHICKEN JUMBO PACK", category: "CHICKEN BIRYANI", base_price: 1150, stock_count: 50, is_special: true, image_url: "jumbobiryani..webp" },
+      'td_fish_full_mandi': { name: "FISH FULL MANDI", category: "SEAFOOD MANDI", base_price: 900, stock_count: 50, is_special: false, image_url: "fishfullmandi.jpeg" },
+      'td_fish_half_mandi': { name: "FISH HALF MANDI", category: "SEAFOOD MANDI", base_price: 480, stock_count: 50, is_special: false, image_url: "fishmandi..webp" },
+      'td_chicken_65': { name: "CHICKEN 65", category: "CHICKEN STARTERS", base_price: 350, stock_count: 100, is_special: false, image_url: "https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?w=500&q=80" },
+      'td_mixed_full_mandi': { name: "MIXED FULL MANDI", category: "MIXED MANDI", base_price: 1350, stock_count: 30, is_special: true, image_url: "juicymandi..jpeg" },
+      'td_butter_chicken': { name: "BUTTER CHICKEN", category: "CURRIES", base_price: 370, stock_count: 50, is_special: false, image_url: "butterchicken.webp" },
+      'td_kaddu_ki_kheer': { name: "KADDU KI KHEER", category: "DESSERTS", base_price: 150, stock_count: 50, is_special: true, image_url: "kadduki kheer.jpeg" },
+      'td_nawabi_full_mutton': { name: "NAWABI FULL MUTTON MANDI", category: "MUTTON MANDI", base_price: 1300, stock_count: 40, is_special: true, image_url: "https://images.unsplash.com/photo-1543362906-acfc16c67564?w=500&q=80" }
+    };
+
+    window.factoryResetSystem = function() {
+      if(!confirm(`⚠️ This will REPLACE the entire live menu with the Taj Darbar default database. Continue?`)) return;
+      db.ref('menu').set(factoryMenuData)
+        .then(() => alert(`✅ Taj Darbar menu successfully loaded!`))
+        .catch(err => alert('Error: ' + err.message));
+    };
+  </script>
+</body>
+</html>
