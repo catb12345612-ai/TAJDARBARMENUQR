@@ -5,83 +5,107 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Taj Darbar - Staff Workspace</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase Core, DB, and Storage -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
   <script>
     tailwind.config = { theme: { extend: { colors: { primary: '#d97706', sidebar: '#0f172a', light: '#f8fafc', card: '#ffffff' } } } }
   </script>
   <style>
     .dash-card { box-shadow: 0 10px 30px rgba(0,0,0,0.04); border: 1px solid rgba(226,232,240,0.8); }
     @keyframes redBlueFlash { 0%, 100% { border-color: #ef4444; } 50% { border-color: #f59e0b; } }
-    .urgent-alarm { animation: redBlueFlash 1s infinite; border-width: 4px; }
+    .urgent-alarm { animation: redBlueFlash 1.5s infinite; border-width: 3px; }
   </style>
 </head>
 <body class="font-sans antialiased text-slate-800 bg-light">
 
   <div id="loginScreen" class="fixed inset-0 bg-sidebar z-[100] flex flex-col items-center justify-center p-5">
-    <div class="bg-card p-10 rounded-3xl text-center w-full max-w-sm shadow-2xl border-t-8 border-primary">
-      <div class="w-16 h-16 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-black shadow-inner">TD</div>
-      <h2 class="text-2xl font-black text-slate-900 mb-2">Taj Darbar Workspace</h2>
-      <input type="password" id="sysPin" placeholder="Enter PIN" class="w-full text-center p-4 bg-slate-50 border border-slate-200 rounded-xl font-black text-2xl outline-none focus:border-primary mb-4 tracking-[0.5em]">
-      <button onclick="attemptLogin()" class="w-full bg-primary text-white font-black py-4 rounded-xl shadow-lg active:scale-95 transition-transform">LOGIN</button>
+    <div class="bg-card p-10 rounded-[2rem] text-center w-full max-w-sm shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-t-8 border-primary">
+      <div class="w-20 h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-inner border-4 border-white">👑</div>
+      <h2 class="text-3xl font-black text-slate-900 mb-2 tracking-tight">Taj Darbar</h2>
+      <p class="text-slate-500 font-bold text-sm mb-6 uppercase tracking-widest">Workspace Login</p>
+      <input type="password" id="sysPin" placeholder="Enter PIN" class="w-full text-center p-4 bg-slate-50 border border-slate-200 rounded-xl font-black text-2xl outline-none focus:border-primary mb-6 tracking-[0.5em] transition-colors">
+      <button onclick="attemptLogin()" class="w-full bg-primary text-white font-black py-4 rounded-xl shadow-lg active:scale-95 transition-transform text-lg">LOGIN</button>
     </div>
   </div>
 
   <div class="flex h-screen overflow-hidden hidden" id="mainLayout">
-    <aside class="w-64 bg-sidebar text-white flex flex-col shadow-xl z-20">
+    <aside class="w-64 bg-sidebar text-white flex flex-col shadow-2xl z-20">
       <div class="p-6 border-b border-white/10">
-        <h1 class="font-black text-xl text-primary">Taj Darbar</h1>
-        <p class="text-[10px] font-bold text-slate-400 uppercase mt-1">Role: <span id="roleText" class="text-white"></span></p>
+        <h1 class="font-black text-2xl text-primary tracking-tight">Taj Darbar</h1>
+        <p class="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest">Role: <span id="roleText" class="text-white"></span></p>
       </div>
       <nav class="flex-1 p-4 space-y-2">
-        <button onclick="switchTab('orders')" id="tab-orders" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm bg-primary/10 text-primary tab-btn">📦 Active Floor</button>
-        <button onclick="switchTab('inventory')" id="tab-inventory" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm text-slate-400 hover:bg-white/5 tab-btn admin-only hidden">🍔 Menu Manager</button>
+        <button onclick="switchTab('orders')" id="tab-orders" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold text-sm bg-primary/20 text-primary transition-all tab-btn">📦 Active Floor</button>
+        <button onclick="switchTab('inventory')" id="tab-inventory" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold text-sm text-slate-400 hover:bg-white/5 transition-all tab-btn admin-only hidden">🍔 Menu Manager</button>
       </nav>
-      <div class="p-4 border-t border-white/10 text-center">
-        <button onclick="location.reload()" class="text-red-400 font-bold text-sm hover:text-red-300">Log Out</button>
+      <div class="p-6 border-t border-white/10 text-center bg-slate-900/50">
+        <button onclick="location.reload()" class="w-full text-red-400 font-black text-sm bg-red-500/10 py-3 rounded-xl hover:bg-red-500 hover:text-white transition-all">Log Out</button>
       </div>
     </aside>
 
-    <main class="flex-1 overflow-y-auto p-8">
+    <main class="flex-1 overflow-y-auto p-8 bg-slate-50">
       
       <!-- ORDERS TAB -->
       <section id="view-orders" class="tab-section">
-        <h2 class="text-3xl font-black text-slate-900 mb-8">Floor Operations</h2>
+        <h2 class="text-3xl font-black text-slate-900 mb-8 tracking-tight">Floor Operations</h2>
         <div id="kitchenGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
       </section>
 
-      <!-- INVENTORY / ADMIN TAB -->
+      <!-- MENU MANAGER TAB -->
       <section id="view-inventory" class="tab-section hidden">
-        <h2 class="text-3xl font-black text-slate-900 mb-8">Menu Manager</h2>
+        <h2 class="text-3xl font-black text-slate-900 mb-8 tracking-tight">Menu Manager</h2>
         
-        <div class="bg-card p-6 rounded-3xl dash-card mb-8 border-t-4 border-primary">
-          <h3 class="text-lg font-black text-slate-900 mb-4">➕ Add New Dish</h3>
-          <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-            <div class="md:col-span-1"><label class="text-[10px] font-black text-slate-400 block mb-1">Dish Name</label><input type="text" id="newDishName" class="w-full p-3 bg-light border border-slate-200 rounded-xl font-bold text-sm outline-none"></div>
-            <div class="md:col-span-1"><label class="text-[10px] font-black text-slate-400 block mb-1">Category</label>
-              <select id="newDishCat" class="w-full p-3 bg-light border border-slate-200 rounded-xl font-bold text-sm outline-none">
-                <option value="CHICKEN MANDI">CHICKEN MANDI</option><option value="MUTTON MANDI">MUTTON MANDI</option><option value="SEAFOOD MANDI">SEAFOOD MANDI</option><option value="CHICKEN BIRYANI">CHICKEN BIRYANI</option><option value="MIXED MANDI">MIXED MANDI</option><option value="CURRIES">CURRIES</option><option value="DESSERTS">DESSERTS</option>
+        <div class="bg-card p-6 rounded-3xl dash-card mb-8 border-t-4 border-primary shadow-lg">
+          <h3 class="text-xl font-black text-slate-900 mb-5">➕ Add New Dish</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
+            <div class="col-span-1">
+              <label class="text-[10px] font-black text-slate-400 block mb-1 uppercase tracking-widest">Dish Name</label>
+              <input type="text" id="newDishName" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-primary focus:bg-white transition-colors">
+            </div>
+            <div class="col-span-1">
+              <label class="text-[10px] font-black text-slate-400 block mb-1 uppercase tracking-widest">Category</label>
+              <select id="newDishCat" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-primary focus:bg-white transition-colors">
+                <option value="Chicken Mandi">Chicken Mandi</option><option value="Mutton Mandi">Mutton Mandi</option><option value="Seafood Mandi">Seafood Mandi</option>
+                <option value="Chicken Biryani">Chicken Biryani</option><option value="Mutton Biryani">Mutton Biryani</option><option value="Mixed Mandi">Mixed Mandi</option>
+                <option value="Veg Mandi">Veg Mandi</option><option value="Chicken Starters">Chicken Starters</option><option value="Curries">Curries</option><option value="Breads">Breads</option><option value="Desserts">Desserts</option>
               </select>
             </div>
-            <div class="md:col-span-1"><label class="text-[10px] font-black text-slate-400 block mb-1">Price (₹)</label><input type="number" id="newDishPrice" class="w-full p-3 bg-light border border-slate-200 rounded-xl font-bold text-sm outline-none"></div>
-            <div class="md:col-span-1"><label class="text-[10px] font-black text-slate-400 block mb-1">Image URL</label><input type="text" id="newDishImg" placeholder="Paste link" class="w-full p-3 bg-light border border-slate-200 rounded-xl font-bold text-sm outline-none"></div>
-            <div class="md:col-span-1"><button onclick="addNewDish()" class="w-full bg-primary text-white font-black py-3 rounded-xl active:scale-95 transition-transform">ADD DISH</button></div>
+            <div class="col-span-1">
+              <label class="text-[10px] font-black text-slate-400 block mb-1 uppercase tracking-widest">Base Price (₹)</label>
+              <input type="number" id="newDishPrice" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-primary focus:bg-white transition-colors">
+            </div>
+            <div class="col-span-1">
+              <label class="text-[10px] font-black text-slate-400 block mb-1 uppercase tracking-widest">Image (Upload or URL)</label>
+              <input type="file" id="newDishFile" accept="image/*" class="w-full mb-2 text-xs font-semibold text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer">
+              <input type="text" id="newDishImg" placeholder="Or paste link..." class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-bold text-xs outline-none focus:border-primary focus:bg-white">
+            </div>
+          </div>
+          
+          <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <label class="flex items-center gap-2 cursor-pointer bg-amber-50 px-3 py-2 rounded-xl">
+                <input type="checkbox" id="newDishSpecial" class="w-4 h-4 accent-amber-500">
+                <span class="text-xs font-black text-amber-700">⭐ Mark Special</span>
+              </label>
+              <div class="text-xs text-slate-500 font-semibold" id="uploadStatus"></div>
+            </div>
+            <button onclick="addNewDish()" id="addDishBtn" class="bg-primary text-white font-black py-3 px-8 rounded-xl active:scale-95 transition-transform shadow-md">ADD DISH</button>
           </div>
         </div>
 
-        <div id="inventoryList" class="grid grid-cols-1 xl:grid-cols-2 gap-4"></div>
-
-        <div class="mt-16 pt-8 border-t border-slate-200 text-center">
-          <button onclick="factoryResetSystem()" class="bg-red-50 text-red-600 border border-red-200 px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all">
-            ⚠️ FACTORY RESET: Load Full Taj Darbar Database
-          </button>
+        <div class="mb-4">
+          <input type="text" id="menuSearch" oninput="renderInventory()" placeholder="🔍 Search menu..." class="w-full max-w-sm p-3 bg-white border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-primary shadow-sm">
         </div>
-      </section>
+        <div id="inventoryList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></div>
 
+      </section>
     </main>
   </div>
 
   <script>
+    // --- FIREBASE CONFIG ---
     const firebaseConfig = {
       apiKey: "AIzaSyAc5Nfz9pNp4dNmNr3OKQFcZEaBJ5KH3dg",
       authDomain: "algani-cafe.firebaseapp.com",
@@ -89,16 +113,13 @@
       projectId: "algani-cafe",
       storageBucket: "algani-cafe.firebasestorage.app",
       messagingSenderId: "44056411552",
-      appId: "1:44056411552:web:a245596401ca636fb0f8c5",
-      measurementId: "G-9GDVR0V5VE"
+      appId: "1:44056411552:web:a245596401ca636fb0f8c5"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const storage = firebase.storage();
 
-    const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxxmng1jPefetM-9Xzt28v1Kj3RMuAEmNEBqPS1GAIzYUZH_wMRLkl56Y8YZe83D3_vMg/exec";
-
-    let currentRole = null;
-    let menuCache = {};
+    let currentRole = null, menuCache = {};
     window.currentTables = {};
 
     window.attemptLogin = function() {
@@ -112,131 +133,134 @@
       document.getElementById('mainLayout').classList.remove('hidden');
       document.getElementById('roleText').innerText = currentRole.toUpperCase();
       if(currentRole === 'admin') document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
-      
       loadSystem();
     };
 
     window.switchTab = function(tab) {
       document.querySelectorAll('.tab-section').forEach(sec => sec.classList.add('hidden'));
       document.querySelectorAll('.tab-btn').forEach(b => {
-        if(b.id === `tab-${tab}`) { b.classList.add('bg-primary/10','text-primary'); b.classList.remove('text-slate-400'); }
-        else { b.classList.remove('bg-primary/10','text-primary'); b.classList.add('text-slate-400'); }
+        if(b.id === `tab-${tab}`) { b.classList.add('bg-primary/20','text-primary'); b.classList.remove('text-slate-400'); }
+        else { b.classList.remove('bg-primary/20','text-primary'); b.classList.add('text-slate-400'); }
       });
       document.getElementById(`view-${tab}`).classList.remove('hidden');
     };
 
     function loadSystem() {
-      // Floor Listener
       db.ref('active_tables').on('value', snap => {
         const grid = document.getElementById('kitchenGrid'); grid.innerHTML = '';
-        const tables = snap.val() || {};
-        window.currentTables = tables;
+        window.currentTables = snap.val() || {};
         
-        Object.entries(tables).sort((a,b)=>a[1].timestamp-b[1].timestamp).forEach(([id, table]) => {
-          let border = table.status==='pending'?'urgent-alarm border-red-500':(table.status==='bill_requested'?'urgent-alarm border-amber-500':'border-slate-200');
-          let btnHtml = '';
+        Object.entries(window.currentTables).sort((a,b)=>a[1].timestamp-b[1].timestamp).forEach(([id, t]) => {
+          let bClass = t.status==='pending'?'urgent-alarm border-red-500':(t.status==='bill_requested'?'urgent-alarm border-amber-500':'border-slate-200');
+          let btn = '';
           
           if(currentRole === 'admin') {
-            if(table.status === 'pending' || table.status === 'cooking') {
-               btnHtml = `<button class="w-full bg-blue-600 text-white py-3 rounded-xl font-black mb-2" onclick="db.ref('active_tables/${id}').update({status:'cooking'})">Mark Cooking</button>
-                          <button class="w-full bg-emerald-500 text-white py-3 rounded-xl font-black" onclick="db.ref('active_tables/${id}').update({status:'served'})">Mark Served</button>`;
-            } else {
-               btnHtml = `<button class="w-full bg-slate-900 text-white py-4 rounded-xl font-black" onclick="clearTable('${id}')">Clear & Bill Table</button>`;
-            }
+            if(t.status === 'pending' || t.status === 'cooking') {
+               btn = `<button class="w-full bg-blue-600 text-white py-3 rounded-xl font-black mb-2 shadow-md hover:bg-blue-700 transition-colors" onclick="db.ref('active_tables/${id}').update({status:'cooking'})">Mark Cooking</button>
+                      <button class="w-full bg-emerald-500 text-white py-3 rounded-xl font-black shadow-md hover:bg-emerald-600 transition-colors" onclick="db.ref('active_tables/${id}').update({status:'served'})">Mark Served</button>`;
+            } else { btn = `<button class="w-full bg-slate-900 text-white py-4 rounded-xl font-black shadow-lg hover:bg-slate-800 transition-colors" onclick="clearTable('${id}')">Clear & Bill Table</button>`; }
           } else if(currentRole === 'kitchen') {
-            if(table.status !== 'served' && table.status !== 'bill_requested') {
-              btnHtml = `<button class="w-full bg-blue-600 text-white py-3 rounded-xl font-black mb-2" onclick="db.ref('active_tables/${id}').update({status:'cooking'})">Acknowledge</button>
-                         <button class="w-full bg-emerald-500 text-white py-3 rounded-xl font-black" onclick="db.ref('active_tables/${id}').update({status:'served'})">Food Ready / Served</button>`;
-            } else { btnHtml = `<button class="w-full bg-light text-slate-400 py-4 rounded-xl font-black" disabled>Done</button>`; }
+            if(t.status !== 'served' && t.status !== 'bill_requested') {
+              btn = `<button class="w-full bg-blue-600 text-white py-3 rounded-xl font-black mb-2 shadow-md" onclick="db.ref('active_tables/${id}').update({status:'cooking'})">Acknowledge (Cooking)</button>
+                     <button class="w-full bg-emerald-500 text-white py-3 rounded-xl font-black shadow-md" onclick="db.ref('active_tables/${id}').update({status:'served'})">Food Ready / Served</button>`;
+            } else { btn = `<button class="w-full bg-slate-100 text-slate-400 py-4 rounded-xl font-black" disabled>Done</button>`; }
           }
 
-          let itemsHtml = Object.values(table.line_items||{}).map(li => 
-            `<div class="${li.cancelled?'line-through text-red-400':''} font-semibold text-sm py-1 border-b border-slate-100 flex items-center gap-2">
-              ${li.custom_img ? `<img src="${li.custom_img}" class="w-8 h-8 rounded-md object-cover">` : ''}
-              ${li.name} (x${li.qty})
+          let items = Object.values(t.line_items||{}).map(li => 
+            `<div class="${li.cancelled?'line-through text-red-400 opacity-60':''} font-semibold text-sm py-2 border-b border-slate-100 flex items-center gap-3">
+              ${li.custom_img ? `<img src="${li.custom_img}" class="w-10 h-10 rounded-lg object-cover border border-slate-200">` : ''}
+              <span>${li.name} <span class="text-primary font-black ml-1">x${li.qty}</span>${li.note?`<br><span class="text-[10px] text-amber-600">Note: ${li.note}</span>`:''}</span>
             </div>`
           ).join('');
 
           grid.innerHTML += `
-            <div class="dash-card bg-card p-6 rounded-3xl ${border} flex flex-col justify-between">
+            <div class="dash-card bg-card p-6 rounded-[2rem] ${bClass} flex flex-col justify-between">
               <div>
                 <div class="flex justify-between items-center border-b border-slate-100 pb-4 mb-4">
-                  <div><span class="text-[10px] font-black text-slate-400 block">Table</span><span class="font-black text-2xl">${table.table}</span></div>
-                  <span class="text-xs font-black uppercase bg-slate-100 px-3 py-1.5 rounded-lg">${table.status.replace('_',' ')}</span>
+                  <div><span class="text-[10px] font-black text-slate-400 block uppercase tracking-widest">Table</span><span class="font-black text-3xl text-royal">${t.table}</span></div>
+                  <span class="text-xs font-black uppercase bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg shadow-sm">${t.status.replace('_',' ')}</span>
                 </div>
-                <div class="mb-4 max-h-48 overflow-y-auto">${itemsHtml}</div>
+                <div class="mb-5 max-h-56 overflow-y-auto pr-2">${items}</div>
               </div>
-              <div>
+              <div class="border-t border-slate-100 pt-4">
                 <div class="flex justify-between items-end mb-4">
-                  <span class="text-xs font-bold text-slate-400">📞 ${table.phone}</span>
-                  <span class="font-black text-xl">₹${table.total}</span>
+                  <span class="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-md">📞 ${t.phone}</span>
+                  <span class="font-black text-2xl text-royal tracking-tight">₹${t.total}</span>
                 </div>
-                ${btnHtml}
+                ${btn}
               </div>
             </div>`;
         });
       });
 
-      // Menu Listener
       if(currentRole === 'admin') {
-        db.ref('menu').on('value', snap => {
-          menuCache = snap.val() || {};
-          const list = document.getElementById('inventoryList'); list.innerHTML = '';
-          Object.entries(menuCache).forEach(([id, item]) => {
-            list.innerHTML += `
-              <div class="dash-card bg-card p-4 rounded-2xl flex items-center gap-4">
-                <img src="${item.image_url}" class="w-16 h-16 rounded-xl object-cover" onerror="this.src='https://images.unsplash.com/photo-1544025162-8111142154ea?w=200&q=80'">
-                <div class="flex-1">
-                  <h4 class="font-black text-sm">${item.name}</h4>
-                  <p class="text-[10px] font-black text-slate-400 uppercase">${item.category} · ₹${item.base_price}</p>
-                </div>
-                <button onclick="db.ref('menu/${id}').remove()" class="text-red-400 font-bold text-xs bg-red-50 px-3 py-2 rounded-lg hover:bg-red-100">Delete</button>
-              </div>`;
-          });
-        });
+        db.ref('menu').on('value', snap => { menuCache = snap.val() || {}; renderInventory(); });
       }
     }
 
-    window.addNewDish = function() {
-      const name = document.getElementById('newDishName').value.trim();
-      const price = parseFloat(document.getElementById('newDishPrice').value);
-      const img = document.getElementById('newDishImg').value.trim() || 'https://images.unsplash.com/photo-1544025162-8111142154ea?w=500&q=80';
-      if(!name || isNaN(price)) return alert("Valid Name and Price required.");
+    window.renderInventory = function() {
+      const list = document.getElementById('inventoryList'), q = document.getElementById('menuSearch').value.toLowerCase();
+      list.innerHTML = '';
+      Object.entries(menuCache).forEach(([id, item]) => {
+        if(q && !item.name.toLowerCase().includes(q) && !item.category.toLowerCase().includes(q)) return;
+        list.innerHTML += `
+          <div class="dash-card bg-card p-4 rounded-2xl flex flex-col relative">
+            ${item.is_special ? '<span class="absolute top-2 left-2 bg-amber-500 text-white text-[9px] font-black px-2 py-0.5 rounded shadow-sm z-10">⭐ SPECIAL</span>' : ''}
+            <img src="${item.image_url}" class="w-full h-32 rounded-xl object-cover mb-3 bg-slate-100" onerror="this.src='https://images.unsplash.com/photo-1544025162-8111142154ea?w=200&q=80'">
+            <h4 class="font-black text-base text-royal leading-tight mb-1">${item.name}</h4>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">${item.category} · ₹${item.base_price}</p>
+            <div class="mt-auto border-t border-slate-100 pt-3 flex gap-2">
+              <button onclick="toggleSpecial('${id}', ${item.is_special})" class="flex-1 text-[10px] font-bold py-2 rounded-lg ${item.is_special?'bg-amber-100 text-amber-700':'bg-slate-100 text-slate-600'}">Toggle Spec</button>
+              <button onclick="db.ref('menu/${id}').remove()" class="flex-1 text-red-500 font-bold text-[10px] bg-red-50 py-2 rounded-lg hover:bg-red-100">Delete</button>
+            </div>
+          </div>`;
+      });
+    };
+
+    window.toggleSpecial = function(id, cur) { db.ref('menu/'+id).update({is_special: !cur}); };
+
+    window.addNewDish = async function() {
+      const n = document.getElementById('newDishName').value.trim();
+      const p = parseFloat(document.getElementById('newDishPrice').value);
+      const fileInput = document.getElementById('newDishFile');
+      let img = document.getElementById('newDishImg').value.trim();
       
-      db.ref('menu/item_' + Date.now()).set({ name: name, category: document.getElementById('newDishCat').value, base_price: price, image_url: img, is_special: false, stock_count: 100 })
-        .then(() => { document.getElementById('newDishName').value = ''; document.getElementById('newDishPrice').value = ''; document.getElementById('newDishImg').value = ''; });
+      if(!n || isNaN(p)){ return alert("Valid Name and Price required."); }
+
+      const btn = document.getElementById('addDishBtn');
+      const stat = document.getElementById('uploadStatus');
+      btn.disabled = true; btn.innerText = "SAVING...";
+
+      if(fileInput.files.length > 0) {
+        stat.innerText = "Uploading image...";
+        try {
+          const file = fileInput.files[0];
+          const ref = storage.ref().child('menu_images/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, ''));
+          await ref.put(file);
+          img = await ref.getDownloadURL();
+          stat.innerText = "Upload complete!";
+        } catch(e) {
+          alert("Image upload failed: " + e.message + "\nSaving without image.");
+          stat.innerText = "";
+        }
+      }
+
+      if(!img) img = 'https://images.unsplash.com/photo-1544025162-8111142154ea?w=500&q=80';
+
+      db.ref('menu/item_' + Date.now()).set({ 
+        name: n, category: document.getElementById('newDishCat').value, 
+        base_price: p, image_url: img, is_special: document.getElementById('newDishSpecial').checked, stock_count: 100 
+      }).then(() => { 
+        document.getElementById('newDishName').value = ''; document.getElementById('newDishPrice').value = ''; 
+        document.getElementById('newDishImg').value = ''; fileInput.value = ''; document.getElementById('newDishSpecial').checked = false;
+        stat.innerText = ""; btn.disabled = false; btn.innerText = "ADD DISH";
+        alert(`✅ ${n} added successfully!`);
+      }).catch(e => { alert("Error: "+e.message); btn.disabled = false; btn.innerText = "ADD DISH"; });
     };
 
     window.clearTable = function(id) {
-      const table = window.currentTables[id];
-      if(!table) return;
-      
-      const sheetPayload = { orderId: table.orderId, tableNo: table.table, phone: table.phone, totalAmount: table.total, paymentMethod: "CASH", itemsDetails: table.items };
-      fetch(WEBHOOK_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(sheetPayload) }).catch(e=>console.log(e));
-      
-      db.ref('active_tables/'+id).remove();
-    };
-
-    const factoryMenuData = {
-      'td_bbq_full_mandi': { name: "BBQ FULL MANDI", category: "CHICKEN MANDI", base_price: 940, stock_count: 100, is_special: false, image_url: "fullchickenmandi..webp" },
-      'td_3pc_bbq_half_mandi': { name: "3 PC BBQ HALF MANDI", category: "CHICKEN MANDI", base_price: 790, stock_count: 100, is_special: true, image_url: "fullchickenmandi 3 pcs..webp" },
-      'td_crispy_chicken_full': { name: "CRISPY CHICKEN FULL MANDI", category: "CHICKEN MANDI", base_price: 950, stock_count: 100, is_special: false, image_url: "fullchickenmandi..webp" },
-      'td_full_chicken_dum_biryani': { name: "FULL CHICKEN DUM BIRYANI", category: "CHICKEN BIRYANI", base_price: 290, stock_count: 100, is_special: false, image_url: "fullchicken.jpeg" },
-      'td_chicken_jumbo_pack': { name: "CHICKEN JUMBO PACK", category: "CHICKEN BIRYANI", base_price: 1150, stock_count: 50, is_special: true, image_url: "jumbobiryani..webp" },
-      'td_fish_full_mandi': { name: "FISH FULL MANDI", category: "SEAFOOD MANDI", base_price: 900, stock_count: 50, is_special: false, image_url: "fishfullmandi.jpeg" },
-      'td_fish_half_mandi': { name: "FISH HALF MANDI", category: "SEAFOOD MANDI", base_price: 480, stock_count: 50, is_special: false, image_url: "fishmandi..webp" },
-      'td_chicken_65': { name: "CHICKEN 65", category: "CHICKEN STARTERS", base_price: 350, stock_count: 100, is_special: false, image_url: "https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?w=500&q=80" },
-      'td_mixed_full_mandi': { name: "MIXED FULL MANDI", category: "MIXED MANDI", base_price: 1350, stock_count: 30, is_special: true, image_url: "juicymandi..jpeg" },
-      'td_butter_chicken': { name: "BUTTER CHICKEN", category: "CURRIES", base_price: 370, stock_count: 50, is_special: false, image_url: "butterchicken.webp" },
-      'td_kaddu_ki_kheer': { name: "KADDU KI KHEER", category: "DESSERTS", base_price: 150, stock_count: 50, is_special: true, image_url: "kadduki kheer.jpeg" },
-      'td_nawabi_full_mutton': { name: "NAWABI FULL MUTTON MANDI", category: "MUTTON MANDI", base_price: 1300, stock_count: 40, is_special: true, image_url: "https://images.unsplash.com/photo-1543362906-acfc16c67564?w=500&q=80" }
-    };
-
-    window.factoryResetSystem = function() {
-      if(!confirm(`⚠️ This will REPLACE the entire live menu with the Taj Darbar default database. Continue?`)) return;
-      db.ref('menu').set(factoryMenuData)
-        .then(() => alert(`✅ Taj Darbar menu successfully loaded!`))
-        .catch(err => alert('Error: ' + err.message));
+      if(!confirm("Are you sure you want to clear this table and end the session?")) return;
+      db.ref('active_tables/'+id).remove().then(()=>alert("Table cleared.")).catch(e=>alert("Error: "+e.message));
     };
   </script>
 </body>
